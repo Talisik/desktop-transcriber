@@ -1,0 +1,49 @@
+version: '3.8'
+services:
+  transcriber:
+    build: .
+    runtime: nvidia
+    network_mode: host
+    volumes:
+      - ./resources:/app/resources
+      - ./benchmark_results:/app/benchmark_results
+    environment:
+      - PYTHONUNBUFFERED=1
+      - NVIDIA_VISIBLE_DEVICES=0
+      - DOCKER_CPU_LIMIT=16
+      - DOCKER_MEMORY_LIMIT=32G
+    deploy:
+      resources:
+        limits:
+          cpus: '16'
+          memory: 32G
+        reservations:
+          cpus: '4'
+          memory: 16G
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    command: python main.py
+
+# version: '3.8'
+# services:
+#   transcriber:
+#     build: .
+#     network_mode: host
+#     volumes:
+#       - ./resources:/app/resources
+#       - ./benchmark_results:/app/benchmark_results
+#     environment:
+#       - PYTHONUNBUFFERED=1
+#       - DOCKER_CPU_LIMIT=2
+#       - DOCKER_MEMORY_LIMIT=4G
+#     deploy:
+#       resources:
+#         limits:
+#           cpus: '8'
+#           memory: 32G
+#         reservations:
+#           cpus: '4'
+#           memory: 16G
+#     command: python main.py
