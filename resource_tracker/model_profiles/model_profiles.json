@@ -1,0 +1,376 @@
+{
+  "tiny": {
+    "min_ram_gb": 4.0,
+    "recommended_ram_gb": 4.0,
+    "min_vram_gb": null,
+    "recommended_vram_gb": null,
+    "min_cpu_cores": 2,
+    "performance_tier": 1,
+    "speed_tier": 5,
+    "model_size_mb": 75,
+    "compute_type_options": {
+      "int8": {
+        "ram_multiplier": 0.8,
+        "vram_multiplier": null,
+        "speed_boost": 1.5,
+        "quality_impact": 0.95
+      },
+      "float32": {
+        "ram_multiplier": 1.0,
+        "vram_multiplier": null,
+        "speed_boost": 1.0,
+        "quality_impact": 1.0
+      }
+    },
+    "batch_size_ranges": {
+      "int8": {
+        "min": 8,
+        "max": 32,
+        "recommended": 16
+      },
+      "float32": {
+        "min": 4,
+        "max": 16,
+        "recommended": 8
+      }
+    },
+    "notes": "Fastest model with lowest accuracy. Best for speed-focused workloads, real-time transcription, or low-resource systems. Suitable for CPU-only environments."
+  },
+  "base": {
+    "min_ram_gb": 4.0,
+    "recommended_ram_gb": 4.0,
+    "min_vram_gb": null,
+    "recommended_vram_gb": null,
+    "min_cpu_cores": 2,
+    "performance_tier": 2,
+    "speed_tier": 4,
+    "model_size_mb": 142,
+    "compute_type_options": {
+      "int8": {
+        "ram_multiplier": 0.8,
+        "vram_multiplier": 0.8,
+        "speed_boost": 1.4,
+        "quality_impact": 0.95
+      },
+      "float16": {
+        "ram_multiplier": 0.6,
+        "vram_multiplier": 0.6,
+        "speed_boost": 1.2,
+        "quality_impact": 0.98
+      },
+      "float32": {
+        "ram_multiplier": 1.0,
+        "vram_multiplier": null,
+        "speed_boost": 1.0,
+        "quality_impact": 1.0
+      }
+    },
+    "batch_size_ranges": {
+      "int8": {
+        "min": 8,
+        "max": 32,
+        "recommended": 16
+      },
+      "float16": {
+        "min": 8,
+        "max": 24,
+        "recommended": 16
+      },
+      "float32": {
+        "min": 4,
+        "max": 16,
+        "recommended": 8
+      }
+    },
+    "notes": "Small model with low-medium accuracy. Good balance of speed and quality for general transcription tasks. Works well on CPU or low-end GPUs."
+  },
+  "small": {
+    "min_ram_gb": 4.0,
+    "recommended_ram_gb": 6.0,
+    "min_vram_gb": null,
+    "recommended_vram_gb": null,
+    "min_cpu_cores": 2,
+    "performance_tier": 3,
+    "speed_tier": 3,
+    "model_size_mb": 466,
+    "compute_type_options": {
+      "int8": {
+        "ram_multiplier": 0.7,
+        "vram_multiplier": 0.7,
+        "speed_boost": 1.3,
+        "quality_impact": 0.94
+      },
+      "float16": {
+        "ram_multiplier": 0.5,
+        "vram_multiplier": 0.5,
+        "speed_boost": 1.1,
+        "quality_impact": 0.98
+      },
+      "float32": {
+        "ram_multiplier": 1.0,
+        "vram_multiplier": null,
+        "speed_boost": 1.0,
+        "quality_impact": 1.0
+      }
+    },
+    "batch_size_ranges": {
+      "int8": {
+        "min": 4,
+        "max": 24,
+        "recommended": 12
+      },
+      "float16": {
+        "min": 4,
+        "max": 20,
+        "recommended": 16
+      },
+      "float32": {
+        "min": 2,
+        "max": 12,
+        "recommended": 8
+      }
+    },
+    "notes": "Moderate size model with balanced accuracy and speed. Good default choice for most transcription tasks. Recommended for balanced priority mode."
+  },
+  "medium": {
+    "min_ram_gb": 16.0,
+    "recommended_ram_gb": 16.0,
+    "min_vram_gb": null,
+    "recommended_vram_gb": null,
+    "min_cpu_cores": 6,
+    "performance_tier": 4,
+    "speed_tier": 2,
+    "model_size_mb": 1500,
+    "compute_type_options": {
+      "int8": {
+        "ram_multiplier": 0.65,
+        "vram_multiplier": 0.65,
+        "speed_boost": 1.2,
+        "quality_impact": 0.93
+      },
+      "float16": {
+        "ram_multiplier": 0.5,
+        "vram_multiplier": 0.5,
+        "speed_boost": 1.0,
+        "quality_impact": 0.99
+      },
+      "float32": {
+        "ram_multiplier": 1.0,
+        "vram_multiplier": null,
+        "speed_boost": 0.8,
+        "quality_impact": 1.0
+      }
+    },
+    "batch_size_ranges": {
+      "int8": {
+        "min": 2,
+        "max": 16,
+        "recommended": 8
+      },
+      "float16": {
+        "min": 2,
+        "max": 12,
+        "recommended": 8
+      },
+      "float32": {
+        "min": 1,
+        "max": 8,
+        "recommended": 4
+      }
+    },
+    "notes": "Larger model with good accuracy. Requires more resources but provides better transcription quality. Best used with GPU for reasonable speed."
+  },
+  "large": {
+    "min_ram_gb": 16.0,
+    "recommended_ram_gb": 32.0,
+    "min_vram_gb": 10.0,
+    "recommended_vram_gb": 10.0,
+    "min_cpu_cores": 8,
+    "performance_tier": 5,
+    "speed_tier": 1,
+    "model_size_mb": 3000,
+    "compute_type_options": {
+      "int8": {
+        "ram_multiplier": 0.6,
+        "vram_multiplier": 0.6,
+        "speed_boost": 1.1,
+        "quality_impact": 0.92
+      },
+      "float16": {
+        "ram_multiplier": 0.5,
+        "vram_multiplier": 0.5,
+        "speed_boost": 0.9,
+        "quality_impact": 0.99
+      },
+      "float32": {
+        "ram_multiplier": 1.0,
+        "vram_multiplier": null,
+        "speed_boost": 0.7,
+        "quality_impact": 1.0
+      }
+    },
+    "batch_size_ranges": {
+      "int8": {
+        "min": 1,
+        "max": 12,
+        "recommended": 6
+      },
+      "float16": {
+        "min": 1,
+        "max": 8,
+        "recommended": 4
+      },
+      "float32": {
+        "min": 1,
+        "max": 4,
+        "recommended": 2
+      }
+    },
+    "notes": "Large model with high accuracy. Requires significant GPU VRAM and system RAM. Best for quality-focused workloads where accuracy is paramount."
+  },
+  "large-v2": {
+    "min_ram_gb": 16.0,
+    "recommended_ram_gb": 32.0,
+    "min_vram_gb": 10.0,
+    "recommended_vram_gb": 10.0,
+    "min_cpu_cores": 8,
+    "performance_tier": 5,
+    "speed_tier": 1,
+    "model_size_mb": 3000,
+    "compute_type_options": {
+      "int8": {
+        "ram_multiplier": 0.6,
+        "vram_multiplier": 0.6,
+        "speed_boost": 1.1,
+        "quality_impact": 0.92
+      },
+      "float16": {
+        "ram_multiplier": 0.5,
+        "vram_multiplier": 0.5,
+        "speed_boost": 0.95,
+        "quality_impact": 0.99
+      },
+      "float32": {
+        "ram_multiplier": 1.0,
+        "vram_multiplier": null,
+        "speed_boost": 0.7,
+        "quality_impact": 1.0
+      }
+    },
+    "batch_size_ranges": {
+      "int8": {
+        "min": 1,
+        "max": 12,
+        "recommended": 6
+      },
+      "float16": {
+        "min": 1,
+        "max": 8,
+        "recommended": 4
+      },
+      "float32": {
+        "min": 1,
+        "max": 4,
+        "recommended": 2
+      }
+    },
+    "notes": "Optimized variant of large model with similar resource requirements. Provides high accuracy with some performance improvements over original large model."
+  },
+  "large-v3": {
+    "min_ram_gb": 16.0,
+    "recommended_ram_gb": 32.0,
+    "min_vram_gb": 10.0,
+    "recommended_vram_gb": 10.0,
+    "min_cpu_cores": 8,
+    "performance_tier": 5,
+    "speed_tier": 1,
+    "model_size_mb": 3100,
+    "compute_type_options": {
+      "int8": {
+        "ram_multiplier": 0.6,
+        "vram_multiplier": 0.6,
+        "speed_boost": 1.1,
+        "quality_impact": 0.92
+      },
+      "float16": {
+        "ram_multiplier": 0.5,
+        "vram_multiplier": 0.5,
+        "speed_boost": 0.95,
+        "quality_impact": 0.99
+      },
+      "float32": {
+        "ram_multiplier": 1.0,
+        "vram_multiplier": null,
+        "speed_boost": 0.7,
+        "quality_impact": 1.0
+      }
+    },
+    "batch_size_ranges": {
+      "int8": {
+        "min": 1,
+        "max": 10,
+        "recommended": 4
+      },
+      "float16": {
+        "min": 1,
+        "max": 6,
+        "recommended": 4
+      },
+      "float32": {
+        "min": 1,
+        "max": 4,
+        "recommended": 2
+      }
+    },
+    "notes": "Latest large model variant with best accuracy. Requires high-end GPU with substantial VRAM. Best choice for quality-focused transcription where accuracy is critical."
+  },
+  "turbo": {
+    "min_ram_gb": 16.0,
+    "recommended_ram_gb": 16.0,
+    "min_vram_gb": null,
+    "recommended_vram_gb": 8.0,
+    "min_cpu_cores": 7,
+    "performance_tier": 5,
+    "speed_tier": 2,
+    "model_size_mb": 1618,
+    "compute_type_options": {
+      "int8": {
+        "ram_multiplier": 0.6,
+        "vram_multiplier": 0.6,
+        "speed_boost": 1.2,
+        "quality_impact": 0.92
+      },
+      "float16": {
+        "ram_multiplier": 0.5,
+        "vram_multiplier": 0.5,
+        "speed_boost": 1.0,
+        "quality_impact": 0.99
+      },
+      "float32": {
+        "ram_multiplier": 1.0,
+        "vram_multiplier": null,
+        "speed_boost": 0.8,
+        "quality_impact": 1.0
+      }
+    },
+    "batch_size_ranges": {
+      "int8": {
+        "min": 2,
+        "max": 16,
+        "recommended": 8
+      },
+      "float16": {
+        "min": 2,
+        "max": 12,
+        "recommended": 8
+      },
+      "float32": {
+        "min": 1,
+        "max": 8,
+        "recommended": 4
+      }
+    },
+    "notes": "Optimized version of large-v3 offering faster transcription speed (~8x relative to large) with minimal accuracy degradation. Requires ~6 GB VRAM. Best for English transcription tasks. Note: Not trained for translation tasks."
+  }
+}
+
