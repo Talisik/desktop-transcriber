@@ -1,0 +1,36 @@
+{
+  "language_stats": {
+    "major_language_percentage": 100,
+    "language_breakdown": {
+      "counts": {
+        "en": 1
+      },
+      "durations": {
+        "en": 60.0
+      },
+      "percentages": {
+        "en": 100
+      }
+    }
+  },
+  "language_code": "en",
+  "process_id": "test_sample_001",
+  "language_classification": "single_language",
+  "merged_mappings": [
+    {
+      "failed": false,
+      "audio_file": "/home/caloy/Desktop/local-binary/transcriber/resources/videos/5min.mp4",
+      "language_code": "en",
+      "text": "",
+      "confidence": 0.9,
+      "language_confidence": 0.92,
+      "transcription_backend": "sieve",
+      "segments": [],
+      "words": [],
+      "start": 0.0,
+      "end": 60.0,
+      "duration": 60.0
+    }
+  ]
+}
+

@@ -10,4 +10,5 @@ dependencies = [
     "psutil>=5.9.0",
     "mutagen>=1.47.0",
     "pydantic>=2.12.5",
+    "huey>=2.5.0",
 ]
