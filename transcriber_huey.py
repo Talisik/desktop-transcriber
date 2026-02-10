@@ -162,10 +162,18 @@ def _process_single_chunk(
     
     temp_segment_file = None
     try:
+        # Resolve audio file path to absolute (fallback for relative paths)
+        audio_file = Path(chunk.audio_file)
+        if not audio_file.is_absolute():
+            audio_file = audio_file.resolve()
+        
+        if not audio_file.exists():
+            raise FileNotFoundError(f"Audio file not found: {audio_file}")
+        
         # Extract audio segment
         print(f"   extracting segment: {chunk.start}s - {chunk.end}s")
         temp_segment_file = extract_audio_segment(
-            audio_file=chunk.audio_file,
+            audio_file=str(audio_file),  # Use resolved absolute path
             start=chunk.start,
             end=chunk.end
         )
