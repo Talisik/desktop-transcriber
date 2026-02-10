@@ -33,14 +33,25 @@ jobs:
         run: |
           pip install pyinstaller>=6.17.0
       
-      - name: Build executable with PyInstaller
-        run: |
-          pyinstaller huey_worker_windows.spec
+      # - name: Build huey_worker executable with PyInstaller
+      #   run: |
+      #     pyinstaller huey_worker_windows.spec
       
-      - name: Upload artifact
+      - name: Build queue_simulator executable with PyInstaller
+        run: |
+          pyinstaller queue_simulator_windows.spec
+      
+      # - name: Upload huey_worker artifact
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: windows-huey-worker
+      #     path: dist/huey_worker.exe
+      #     retention-days: 30
+      
+      - name: Upload queue_simulator artifact
         uses: actions/upload-artifact@v4
         with:
-          name: windows-executable
-          path: dist/huey_worker.exe
+          name: windows-queue-simulator
+          path: dist/queue_simulator.exe
           retention-days: 30
 
