@@ -63,10 +63,15 @@ def set_ffmpeg_path(path: str | None):
     """Set ffmpeg path for the worker."""
     global _ffmpeg_path
     if path:
-        # Normalize path for Windows compatibility (handles forward/backslashes, etc.)
-        _ffmpeg_path = os.path.normpath(os.path.expanduser(path))
+        # Validate and normalize path (includes existence check and --version test)
+        _ffmpeg_path = validate_ffmpeg_path(path)
     else:
         _ffmpeg_path = None
+
+
+def get_ffmpeg_path() -> str | None:
+    """Get the current ffmpeg path."""
+    return _ffmpeg_path
 
 
 # Payload schemas
@@ -130,6 +135,77 @@ def _find_ffmpeg() -> str:
         "Linux: sudo apt-get install ffmpeg\n"
         "macOS: brew install ffmpeg"
     )
+
+
+def validate_ffmpeg_path(path: str) -> str:
+    """
+    Validate and normalize ffmpeg path.
+    
+    Args:
+        path: Path to ffmpeg executable or directory containing it
+        
+    Returns:
+        Normalized path to ffmpeg executable
+        
+    Raises:
+        RuntimeError: If ffmpeg is not found or not executable
+    """
+    # Normalize path
+    normalized_path = os.path.normpath(os.path.expanduser(path))
+    
+    # Check if path exists
+    if not os.path.exists(normalized_path):
+        raise RuntimeError(f"ffmpeg not found at specified path: {normalized_path}")
+    
+    # Handle directory paths - look for ffmpeg executable inside
+    if os.path.isdir(normalized_path):
+        if sys.platform == 'win32':
+            # Look for ffmpeg.exe in directory
+            exe_path = os.path.join(normalized_path, 'ffmpeg.exe')
+            if os.path.exists(exe_path) and os.path.isfile(exe_path):
+                normalized_path = exe_path
+            else:
+                raise RuntimeError(f"ffmpeg path is a directory, but ffmpeg.exe not found inside: {normalized_path}")
+        else:
+            # Look for ffmpeg in directory (Linux/Mac)
+            exe_path = os.path.join(normalized_path, 'ffmpeg')
+            if os.path.exists(exe_path) and os.path.isfile(exe_path):
+                normalized_path = exe_path
+            else:
+                raise RuntimeError(f"ffmpeg path is a directory, but ffmpeg not found inside: {normalized_path}")
+    
+    # Validate it's a file (not a directory after resolution)
+    if not os.path.isfile(normalized_path):
+        raise RuntimeError(f"ffmpeg path is not a file: {normalized_path}")
+    
+    # On Windows, ensure .exe extension if not present
+    if sys.platform == 'win32':
+        if not normalized_path.lower().endswith('.exe'):
+            # Try adding .exe
+            exe_path = normalized_path + '.exe'
+            if os.path.exists(exe_path) and os.path.isfile(exe_path):
+                normalized_path = exe_path
+            else:
+                raise RuntimeError(f"ffmpeg executable not found: {normalized_path} (tried {exe_path})")
+    
+    # Test that it's actually ffmpeg by running --version
+    try:
+        result = subprocess.run(
+            [normalized_path, '-version'],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        if result.returncode != 0:
+            raise RuntimeError(f"ffmpeg at {normalized_path} failed to run (exit code: {result.returncode})")
+    except subprocess.TimeoutExpired:
+        raise RuntimeError(f"ffmpeg at {normalized_path} timed out when testing")
+    except FileNotFoundError:
+        raise RuntimeError(f"ffmpeg executable not found: {normalized_path}")
+    except Exception as e:
+        raise RuntimeError(f"Error validating ffmpeg at {normalized_path}: {e}")
+    
+    return normalized_path
 
 
 def extract_audio_segment(
@@ -231,10 +307,8 @@ def _process_single_chunk(
     
     temp_segment_file = None
     try:
-        # Resolve audio file path to absolute (fallback for relative paths)
+        # Use audio file path as-is (no forced absolute path conversion)
         audio_file = Path(chunk.audio_file)
-        if not audio_file.is_absolute():
-            audio_file = audio_file.resolve()
         
         if not audio_file.exists():
             raise FileNotFoundError(f"Audio file not found: {audio_file}")
@@ -242,7 +316,7 @@ def _process_single_chunk(
         # Extract audio segment
         print(f"   extracting segment: {chunk.start}s - {chunk.end}s")
         temp_segment_file = extract_audio_segment(
-            audio_file=str(audio_file),  # Use resolved absolute path
+            audio_file=str(audio_file),  # Use path as-is
             start=chunk.start,
             end=chunk.end
         )

@@ -60,9 +60,15 @@ if __name__ == "__main__":
     
     # Set ffmpeg path in transcriber_huey module
     if args.ffmpeg_path:
-        from transcriber_huey import set_ffmpeg_path
-        set_ffmpeg_path(args.ffmpeg_path)
-        print(f"📹 using ffmpeg: {args.ffmpeg_path}")
+        from transcriber_huey import set_ffmpeg_path, get_ffmpeg_path
+        try:
+            set_ffmpeg_path(args.ffmpeg_path)
+            # Get the validated path (it's normalized and validated now)
+            validated_path = get_ffmpeg_path()
+            print(f"📹 using ffmpeg: {validated_path}")
+        except RuntimeError as e:
+            print(f"❌ ffmpeg validation failed: {e}")
+            sys.exit(1)
     
     print("🚀 starting huey worker")
     print("   press Ctrl+C to stop\n")

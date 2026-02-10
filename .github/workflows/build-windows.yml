@@ -1,11 +1,14 @@
 name: Build Windows Executable
 
+# DISABLED: Use build-windows-huey-worker.yml instead
+# on:
+#   push:
+#     branches: [ main, master, huey-build, windows/huey-build, optimized-windows/huey-build ]
+#   pull_request:
+#     branches: [ main, master ]
+#   workflow_dispatch:
 on:
-  push:
-    branches: [ main, master, huey-build, windows/huey-build, optimized-windows/huey-build ]
-  pull_request:
-    branches: [ main, master ]
-  workflow_dispatch:
+  workflow_dispatch:  # Only allow manual trigger
 
 jobs:
   build:
