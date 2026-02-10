@@ -29,6 +29,7 @@ import gc
 import subprocess
 import tempfile
 import multiprocessing
+import shutil
 from pathlib import Path
 from typing import Dict, Any, List
 from datetime import datetime
@@ -55,6 +56,14 @@ env = os.getenv("ENV") or os.getenv("ENVIRONMENT") or "default"
 db_filename = f"transcribe_queue_{env}.db"
 huey = SqliteHuey(filename=db_filename)
 
+# Module-level ffmpeg path (set by worker)
+_ffmpeg_path: str | None = None
+
+def set_ffmpeg_path(path: str | None):
+    """Set ffmpeg path for the worker."""
+    global _ffmpeg_path
+    _ffmpeg_path = path
+
 
 # Payload schemas
 class MergedMappingSchema(BaseModel):
@@ -78,6 +87,45 @@ class TranscriptionPayloadSchema(BaseModel):
     process_id: str
     language_classification: str
     merged_mappings: list[MergedMappingSchema]
+
+
+def _find_ffmpeg() -> str:
+    """
+    Find ffmpeg executable in PATH or common locations.
+    
+    Returns:
+        Path to ffmpeg executable
+    
+    Raises:
+        RuntimeError: If ffmpeg is not found
+    """
+    # Try to find ffmpeg in PATH
+    ffmpeg_path = shutil.which('ffmpeg')
+    if ffmpeg_path:
+        return ffmpeg_path
+    
+    # On Windows, try ffmpeg.exe
+    if sys.platform == 'win32':
+        ffmpeg_path = shutil.which('ffmpeg.exe')
+        if ffmpeg_path:
+            return ffmpeg_path
+        
+        # Try common Windows installation locations
+        common_paths = [
+            r'C:\ffmpeg\bin\ffmpeg.exe',
+            r'C:\Program Files\ffmpeg\bin\ffmpeg.exe',
+            r'C:\Program Files (x86)\ffmpeg\bin\ffmpeg.exe',
+        ]
+        for path in common_paths:
+            if os.path.exists(path):
+                return path
+    
+    raise RuntimeError(
+        "ffmpeg not found. Please install ffmpeg and ensure it's in your PATH.\n"
+        "Windows: Download from https://ffmpeg.org/download.html and add to PATH\n"
+        "Linux: sudo apt-get install ffmpeg\n"
+        "macOS: brew install ffmpeg"
+    )
 
 
 def extract_audio_segment(
@@ -105,8 +153,16 @@ def extract_audio_segment(
     
     duration = end - start
     
+    # Use module-level ffmpeg path if set, otherwise find it
+    if _ffmpeg_path:
+        ffmpeg_exe = _ffmpeg_path
+        if not os.path.exists(ffmpeg_exe):
+            raise RuntimeError(f"ffmpeg not found at specified path: {ffmpeg_exe}")
+    else:
+        ffmpeg_exe = _find_ffmpeg()  # Fallback to auto-detection
+    
     cmd = [
-        'ffmpeg',
+        ffmpeg_exe,
         '-i', audio_file,
         '-ss', str(start),
         '-t', str(duration),

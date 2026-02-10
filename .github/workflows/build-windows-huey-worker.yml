@@ -10,6 +10,7 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    timeout-minutes: 60
     
     steps:
       - name: Checkout code
@@ -35,7 +36,18 @@ jobs:
       
       - name: Build huey_worker executable with PyInstaller
         run: |
-          pyinstaller huey_worker_windows.spec --clean
+          pyinstaller huey_worker_windows.spec --clean --noconfirm
+      
+      - name: Verify executable exists
+        run: |
+          if (Test-Path "dist\huey_worker.exe") {
+            Write-Host "✅ huey_worker.exe built successfully"
+            $fileInfo = Get-Item "dist\huey_worker.exe"
+            Write-Host "   Size: $([math]::Round($fileInfo.Length / 1MB, 2)) MB"
+          } else {
+            Write-Host "❌ huey_worker.exe not found!"
+            exit 1
+          }
       
       - name: Upload huey_worker artifact
         uses: actions/upload-artifact@v4
@@ -43,4 +55,5 @@ jobs:
           name: windows-huey-worker
           path: dist/huey_worker.exe
           retention-days: 30
+          if-no-files-found: error
 

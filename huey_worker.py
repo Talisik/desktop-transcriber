@@ -47,6 +47,23 @@ def run_consumer_programmatic():
 
 
 if __name__ == "__main__":
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="Huey transcription worker")
+    parser.add_argument(
+        "--ffmpeg-path",
+        type=str,
+        default=None,
+        help="Path to ffmpeg executable (default: auto-detect)"
+    )
+    args = parser.parse_args()
+    
+    # Set ffmpeg path in transcriber_huey module
+    if args.ffmpeg_path:
+        from transcriber_huey import set_ffmpeg_path
+        set_ffmpeg_path(args.ffmpeg_path)
+        print(f"📹 using ffmpeg: {args.ffmpeg_path}")
+    
     print("🚀 starting huey worker")
     print("   press Ctrl+C to stop\n")
     
