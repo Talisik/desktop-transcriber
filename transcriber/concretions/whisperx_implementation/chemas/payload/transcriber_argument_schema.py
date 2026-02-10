@@ -7,3 +7,4 @@ class WhisperXTranscriberArgumentSchema(BaseModel):
     device: str
     compute_type: str
     batch_size: int
+    language: str | None = None  # language code to skip detection

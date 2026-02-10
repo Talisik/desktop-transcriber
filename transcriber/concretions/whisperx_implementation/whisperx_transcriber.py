@@ -6,6 +6,40 @@ import whisperx
 from whisperx.diarize import DiarizationPipeline
 import gc
 
+# Valid Whisper language codes
+VALID_WHISPER_LANGUAGES = {
+    "af", "am", "ar", "as", "az", "ba", "be", "bg", "bn", "bo", "br", "bs", "ca", "cs", "cy",
+    "da", "de", "el", "en", "es", "et", "eu", "fa", "fi", "fo", "fr", "gl", "gu", "ha", "haw",
+    "he", "hi", "hr", "ht", "hu", "hy", "id", "is", "it", "ja", "jw", "ka", "kk", "km", "kn",
+    "ko", "la", "lb", "ln", "lo", "lt", "lv", "mg", "mi", "mk", "ml", "mn", "mr", "ms", "mt",
+    "my", "ne", "nl", "nn", "no", "oc", "pa", "pl", "ps", "pt", "ro", "ru", "sa", "sd", "si",
+    "sk", "sl", "sn", "so", "sq", "sr", "su", "sv", "sw", "ta", "te", "tg", "th", "tk", "tl",
+    "tr", "tt", "uk", "ur", "uz", "vi", "yi", "yo", "zh", "yue"
+}
+
+
+def validate_language_code(language: str | None) -> str | None:
+    """
+    Validate language code and map unsupported codes to 'en'.
+    
+    Args:
+        language: Language code to validate
+    
+    Returns:
+        Valid language code, or 'en' if unsupported, or None if language is None
+    """
+    if language is None:
+        return None
+    
+    language_lower = language.lower()
+    if language_lower in VALID_WHISPER_LANGUAGES:
+        return language_lower
+    
+    # Map unsupported language codes to English
+    print(f"⚠️  language code '{language}' not supported, using 'en' instead")
+    return "en"
+
+
 class WhisperXTranscriber(TranscriberBase):
 
     def __init__(self, device: str | None = None):
@@ -43,11 +77,15 @@ class WhisperXTranscriber(TranscriberBase):
         if device is None:
             device = getattr(self, 'device', "cuda" if torch.cuda.is_available() else "cpu")
         
+        # Use "en" as default if language is "tl" or unsupported
+        # Alignment model doesn't support Tagalog
+        alignment_language = "en" if language_code == "tl" else language_code
+        
         self.alignment_model = whisperx.load_align_model(
-            language_code=language_code, 
+            language_code=alignment_language, 
             device=device
         )
-        print(f"✓ alignment model downloaded")
+        print(f"✓ alignment model downloaded (language: {alignment_language})")
 
     @staticmethod
     def __load_audio(audio_file: str):
@@ -105,7 +143,8 @@ class WhisperXTranscriber(TranscriberBase):
         download_root: str,
         device: Device = Device.cuda,
         compute_type: ComputeType = ComputeType.float16,
-        batch_size: int = 16
+        batch_size: int = 16,
+        language: str | None = None
     ):
         model = whisperx.load_model(
             whisper_model, 
@@ -113,7 +152,17 @@ class WhisperXTranscriber(TranscriberBase):
             compute_type=compute_type,
             download_root=download_root
         )
-        result = model.transcribe(audio, batch_size=batch_size)
+        # Pass language to skip detection
+        # Note: vad_filter is not a valid parameter for model.transcribe()
+        # VAD is handled at WhisperX wrapper level, but since we're using
+        # pre-segmented audio, VAD overhead should be minimal
+        transcribe_kwargs = {"batch_size": batch_size}
+        if language:
+            # Validate and map unsupported language codes to 'en'
+            validated_language = validate_language_code(language)
+            if validated_language:
+                transcribe_kwargs["language"] = validated_language
+        result = model.transcribe(audio, **transcribe_kwargs)
         return result, model
 
     def __whisperx_align(
@@ -152,14 +201,18 @@ class WhisperXTranscriber(TranscriberBase):
             download_root=payload.download_root,
             device=Device(payload.device),
             compute_type=ComputeType(payload.compute_type),
-            batch_size=payload.batch_size
+            batch_size=payload.batch_size,
+            language=payload.language  # Pass language to skip detection
         )
 
         if self.alignment_model is None:
-            language_code = result.get("language", "en")
+            # Get detected language from result, or use payload language, or default to "en"
+            language_code = payload.language or result.get("language", "en")
+            # Map "tl" to "en" for alignment
+            alignment_language = "en" if language_code == "tl" else language_code
             device_str = str(payload.device)
             self.__lazy_download_alignment_model(
-                language_code=language_code,
+                language_code=alignment_language,
                 device=device_str
             )
 

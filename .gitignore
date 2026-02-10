@@ -25,6 +25,10 @@ env/
 *.spec.bak
 *.manifest
 *.spec~
+# Keep .spec files but ignore build artifacts
+build/
+dist/
+*.exe
 
 # Application outputs
 output/
@@ -33,6 +37,15 @@ output/
 *.db-wal
 *.sqlite
 *.sqlite3
+
+# Test data files
+*.mp3
+*.mp4
+*.wav
+*.flac
+*.m4a
+*.ogg
+salina_vad.db
 
 # Benchmark results
 benchmark_results/
@@ -86,3 +99,12 @@ logs/
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+# Rye/UV
+.rye/
+uv.lock.bak
+
+# Temporary audio segment files
+chunk_*.wav
+temp_*.wav
+*.tmp.wav

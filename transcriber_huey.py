@@ -26,9 +26,13 @@ import json
 import os
 import sys
 import gc
+import subprocess
+import tempfile
+import multiprocessing
 from pathlib import Path
 from typing import Dict, Any, List
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # CRITICAL: Register module with correct name BEFORE any decorators run
 # This ensures tasks are registered as 'transcriber_huey.task_name' even when run as script
@@ -76,6 +80,160 @@ class TranscriptionPayloadSchema(BaseModel):
     merged_mappings: list[MergedMappingSchema]
 
 
+def extract_audio_segment(
+    audio_file: str,
+    start: float,
+    end: float,
+    output_file: str | None = None
+) -> str:
+    """
+    Extract audio segment using ffmpeg.
+    
+    Args:
+        audio_file: Path to source audio file
+        start: Start time in seconds
+        end: End time in seconds
+        output_file: Output file path (creates temp file if None)
+    
+    Returns:
+        Path to extracted segment file
+    """
+    if output_file is None:
+        # Create temp file
+        temp_fd, output_file = tempfile.mkstemp(suffix='.wav', prefix='chunk_')
+        os.close(temp_fd)
+    
+    duration = end - start
+    
+    cmd = [
+        'ffmpeg',
+        '-i', audio_file,
+        '-ss', str(start),
+        '-t', str(duration),
+        '-acodec', 'pcm_s16le',  # wav format
+        '-ar', '16000',  # sample rate for whisper
+        '-ac', '1',  # mono
+        '-y',  # overwrite
+        output_file
+    ]
+    
+    try:
+        result = subprocess.run(
+            cmd,
+            check=True,
+            capture_output=True,
+            text=True
+        )
+        return output_file
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"ffmpeg failed to extract audio segment: {e.stderr}")
+    except FileNotFoundError:
+        raise RuntimeError("ffmpeg not found. Please install ffmpeg.")
+
+
+def _process_single_chunk(
+    chunk_data: tuple,
+    whisper_model: str,
+    download_root: str,
+    device: str,
+    compute_type: str,
+    batch_size: int
+) -> tuple:
+    """
+    Process a single chunk in a worker thread.
+    
+    Args:
+        chunk_data: Tuple of (chunk_idx, chunk, total_chunks, audio_file_path)
+        whisper_model: Whisper model name
+        download_root: Model download directory
+        device: Device to use
+        compute_type: Compute type
+        batch_size: Batch size
+    
+    Returns:
+        Tuple of (chunk_idx, chunk, segments, success, error_message)
+    """
+    chunk_idx, chunk, total_chunks, audio_file_path = chunk_data
+    
+    print(f"\n📦 processing chunk {chunk_idx}/{total_chunks} (thread)")
+    print(f"   audio_file: {Path(chunk.audio_file).name}")
+    print(f"   language: {chunk.language_code}")
+    print(f"   time range: {chunk.start}s - {chunk.end}s")
+    
+    temp_segment_file = None
+    try:
+        # Extract audio segment
+        print(f"   extracting segment: {chunk.start}s - {chunk.end}s")
+        temp_segment_file = extract_audio_segment(
+            audio_file=chunk.audio_file,
+            start=chunk.start,
+            end=chunk.end
+        )
+        
+        # Create transcriber instance for this thread
+        # Each thread gets its own instance to avoid conflicts
+        transcriber = WhisperXTranscriber(device=device)
+        
+        # Create transcription payload
+        transcribe_payload = WhisperXTranscriberArgumentSchema(
+            audio_file=temp_segment_file,
+            whisper_model=whisper_model,
+            download_root=download_root,
+            device=device,
+            compute_type=compute_type,
+            batch_size=batch_size,
+            language=chunk.language_code
+        )
+        
+        # Transcribe
+        result, model = transcriber.transcribe(transcribe_payload)
+        
+        # Extract segments and adjust timestamps
+        chunk_segments = result.get("segments", [])
+        for segment in chunk_segments:
+            segment["start"] = segment.get("start", 0) + chunk.start
+            segment["end"] = segment.get("end", 0) + chunk.start
+            
+            if "words" in segment:
+                for word in segment["words"]:
+                    word["start"] = word.get("start", 0) + chunk.start
+                    word["end"] = word.get("end", 0) + chunk.start
+        
+        # Update chunk
+        chunk.text = " ".join(seg.get("text", "") for seg in chunk_segments)
+        chunk.segments = chunk_segments
+        chunk.words = [word for seg in chunk_segments for word in seg.get("words", [])]
+        chunk.transcription_backend = "whisperx"
+        chunk.failed = False
+        
+        print(f"✓ chunk {chunk_idx} completed: {len(chunk_segments)} segments")
+        
+        # Cleanup
+        del model
+        gc.collect()
+        if device == "cuda":
+            torch.cuda.empty_cache()
+        
+        return (chunk_idx, chunk, chunk_segments, True, None)
+        
+    except Exception as e:
+        error_msg = str(e)
+        print(f"❌ chunk {chunk_idx} failed: {error_msg}")
+        chunk.failed = True
+        chunk.text = ""
+        chunk.segments = []
+        chunk.words = []
+        return (chunk_idx, chunk, [], False, error_msg)
+        
+    finally:
+        # Cleanup temp file
+        if temp_segment_file and os.path.exists(temp_segment_file):
+            try:
+                os.unlink(temp_segment_file)
+            except Exception as e:
+                print(f"⚠️  warning: failed to delete temp file {temp_segment_file}: {e}")
+
+
 def _transcribe_payload_task_impl(
     payload: dict,
     whisper_model: str,
@@ -88,7 +246,7 @@ def _transcribe_payload_task_impl(
     output_dir: str
 ) -> str:
     """
-    Transcribe payload with audio chunks (sequential processing).
+    Transcribe payload with audio chunks (parallel processing).
     
     Returns:
         Path to saved transcript JSON file
@@ -104,67 +262,59 @@ def _transcribe_payload_task_impl(
     # collect all segments from all chunks
     all_segments = []
     
-    # process each chunk sequentially
-    for idx, chunk in enumerate(payload_schema.merged_mappings, 1):
-        print(f"\n📦 processing chunk {idx}/{len(payload_schema.merged_mappings)}")
-        print(f"   audio_file: {Path(chunk.audio_file).name}")
-        print(f"   language: {chunk.language_code}")
-        print(f"   time range: {chunk.start}s - {chunk.end}s")
+    # Determine number of workers (auto-detect or use config)
+    # For CPU: use all cores, for CUDA: limit to avoid memory issues
+    if device == "cuda":
+        # Limit to 2-4 workers for GPU to avoid memory conflicts
+        max_workers = min(4, len(payload_schema.merged_mappings), multiprocessing.cpu_count())
+    else:
+        # Use all cores for CPU
+        max_workers = min(multiprocessing.cpu_count(), len(payload_schema.merged_mappings))
+    
+    print(f"   using {max_workers} worker thread(s) for parallel processing")
+    
+    # Prepare chunk data for workers
+    chunk_data_list = [
+        (idx, chunk, len(payload_schema.merged_mappings), chunk.audio_file)
+        for idx, chunk in enumerate(payload_schema.merged_mappings, 1)
+    ]
+    
+    # Process chunks in parallel
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # Submit all tasks
+        future_to_chunk = {
+            executor.submit(
+                _process_single_chunk,
+                chunk_data,
+                whisper_model,
+                download_root,
+                device,
+                compute_type,
+                batch_size
+            ): chunk_data[0]  # chunk_idx
+            for chunk_data in chunk_data_list
+        }
         
-        try:
-            # create transcriber instance
-            transcriber = WhisperXTranscriber(device=device)
-            
-            # create transcription payload
-            transcribe_payload = WhisperXTranscriberArgumentSchema(
-                audio_file=chunk.audio_file,
-                whisper_model=whisper_model,
-                download_root=download_root,
-                device=device,
-                compute_type=compute_type,
-                batch_size=batch_size
-            )
-            
-            # transcribe
-            result, model = transcriber.transcribe(transcribe_payload)
-            
-            # extract segments and adjust timestamps
-            chunk_segments = result.get("segments", [])
-            for segment in chunk_segments:
-                # adjust timestamps to absolute (add chunk start time)
-                segment["start"] = segment.get("start", 0) + chunk.start
-                segment["end"] = segment.get("end", 0) + chunk.start
+        # Collect results as they complete
+        results = {}
+        for future in as_completed(future_to_chunk):
+            chunk_idx = future_to_chunk[future]
+            try:
+                chunk_idx, chunk, chunk_segments, success, error_msg = future.result()
+                results[chunk_idx] = (chunk, chunk_segments, success, error_msg)
                 
-                # adjust word timestamps too
-                if "words" in segment:
-                    for word in segment["words"]:
-                        word["start"] = word.get("start", 0) + chunk.start
-                        word["end"] = word.get("end", 0) + chunk.start
+                # Add segments to all_segments
+                all_segments.extend(chunk_segments)
                 
-                all_segments.append(segment)
-            
-            # update chunk with results
-            chunk.text = " ".join(seg.get("text", "") for seg in chunk_segments)
-            chunk.segments = chunk_segments
-            chunk.words = [word for seg in chunk_segments for word in seg.get("words", [])]
-            chunk.transcription_backend = "whisperx"
-            chunk.failed = False
-            
-            print(f"✓ chunk {idx} completed: {len(chunk_segments)} segments")
-            
-            # cleanup
-            del model
-            gc.collect()
-            if device == "cuda":
-                torch.cuda.empty_cache()
-                
-        except Exception as e:
-            print(f"❌ chunk {idx} failed: {str(e)}")
-            chunk.failed = True
-            chunk.text = ""
-            chunk.segments = []
-            chunk.words = []
-            continue
+            except Exception as e:
+                print(f"❌ chunk {chunk_idx} exception: {str(e)}")
+                # Get chunk from original list
+                chunk = payload_schema.merged_mappings[chunk_idx - 1]
+                chunk.failed = True
+                chunk.text = ""
+                chunk.segments = []
+                chunk.words = []
+                results[chunk_idx] = (chunk, [], False, str(e))
     
     # sort segments chronologically
     all_segments.sort(key=lambda x: x.get("start", 0))

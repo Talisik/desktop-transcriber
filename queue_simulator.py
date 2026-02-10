@@ -6,12 +6,20 @@ Use this to queue multiple tasks to SQLite for testing.
 import json
 import os
 import sys
+import sqlite3
 from pathlib import Path
 from datetime import datetime
+from typing import Dict, Any, Optional
 import argparse
 
 # Import the transcriber_huey module to get the task
 import transcriber_huey
+
+# Import payload generator functions
+from payload_generator import (
+    calculate_language_stats,
+    map_chunks_to_merged_mappings
+)
 
 
 def create_test_payload(
@@ -22,6 +30,14 @@ def create_test_payload(
     end: float = 60.0
 ) -> dict:
     """Create a test payload with a single chunk."""
+    # Convert to absolute path
+    audio_path = Path(audio_file)
+    if not audio_path.is_absolute():
+        audio_path = audio_path.resolve()
+    
+    if not audio_path.exists():
+        raise FileNotFoundError(f"Audio file not found: {audio_path}")
+    
     return {
         "language_stats": {
             "major_language_percentage": 100,
@@ -37,7 +53,7 @@ def create_test_payload(
         "merged_mappings": [
             {
                 "failed": False,
-                "audio_file": audio_file,
+                "audio_file": str(audio_path),  # Use absolute path
                 "language_code": language_code,
                 "text": "",
                 "confidence": 0.9,
@@ -51,6 +67,112 @@ def create_test_payload(
             }
         ]
     }
+
+
+def get_db_row_by_process_id(
+    process_id: str,
+    db_path: str = "salina_vad.db"
+) -> Optional[tuple]:
+    """
+    Query database for row by process_id.
+    
+    Args:
+        process_id: Process ID to search for
+        db_path: Path to database file
+    
+    Returns:
+        Database row tuple or None if not found
+    """
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT * FROM salina_languini_results WHERE process_id = ?",
+            (process_id,)
+        )
+        row = cursor.fetchone()
+        conn.close()
+        return row
+    except (sqlite3.Error, FileNotFoundError) as e:
+        print(f"❌ Error querying database: {e}")
+        return None
+
+
+def build_payload_from_db_row(
+    db_row: tuple,
+    audio_file_path: str
+) -> Dict[str, Any]:
+    """
+    Build transcription payload from database row.
+    
+    Args:
+        db_row: Database row tuple (id, process_id, vad_result_id, language_results_json, 
+                metadata, status, created_at, updated_at, error_message)
+        audio_file_path: Path to audio file
+    
+    Returns:
+        Dict matching TranscriptionPayloadSchema format
+    
+    Raises:
+        ValueError: If status is not 'completed'
+        FileNotFoundError: If audio file doesn't exist
+    """
+    # Extract fields from row
+    # Row structure: (id, process_id, vad_result_id, language_results_json, metadata, 
+    #                 status, created_at, updated_at, error_message)
+    process_id = db_row[1]
+    language_results_json_str = db_row[3]
+    metadata_str = db_row[4]
+    status = db_row[5]
+    
+    # Check status
+    if status != "completed":
+        raise ValueError(f"Process ID '{process_id}' status is '{status}', expected 'completed'")
+    
+    # Convert audio file to absolute path
+    audio_path = Path(audio_file_path)
+    if not audio_path.is_absolute():
+        audio_path = audio_path.resolve()
+    
+    if not audio_path.exists():
+        raise FileNotFoundError(f"Audio file not found: {audio_path}")
+    
+    # Parse JSON strings
+    try:
+        language_chunks = json.loads(language_results_json_str) if language_results_json_str else []
+    except (json.JSONDecodeError, TypeError) as e:
+        raise ValueError(f"Invalid language_results_json for process_id '{process_id}': {e}")
+    
+    try:
+        metadata = json.loads(metadata_str) if metadata_str else {}
+    except (json.JSONDecodeError, TypeError) as e:
+        raise ValueError(f"Invalid metadata for process_id '{process_id}': {e}")
+    
+    # Calculate language stats
+    language_stats = calculate_language_stats(language_chunks, metadata)
+    
+    # Determine major language
+    language_breakdown = language_stats.get("language_breakdown", {})
+    durations = language_breakdown.get("durations", {})
+    major_language = max(durations.items(), key=lambda x: x[1])[0] if durations else "unknown"
+    
+    # Determine language classification
+    multilingual_mode = metadata.get("multilingual_mode", False)
+    language_classification = "multilingual" if multilingual_mode else "single_language"
+    
+    # Map chunks to merged_mappings (with absolute path)
+    merged_mappings = map_chunks_to_merged_mappings(language_chunks, str(audio_path))
+    
+    # Build payload
+    payload = {
+        "language_stats": language_stats,
+        "language_code": major_language,
+        "process_id": process_id,
+        "language_classification": language_classification,
+        "merged_mappings": merged_mappings
+    }
+    
+    return payload
 
 
 def queue_single_task(
@@ -116,12 +238,18 @@ def main():
     parser.add_argument(
         "--process-id",
         type=str,
-        help="Process ID for test payload (auto-generated if not provided)"
+        help="Process ID to look up in database (or auto-generated for test payload)"
+    )
+    parser.add_argument(
+        "--db-path",
+        type=str,
+        default="salina_vad.db",
+        help="Path to database file (default: salina_vad.db)"
     )
     parser.add_argument(
         "--audio-file",
         type=str,
-        help="Audio file path (required if creating test payload)"
+        help="Audio file path (required if creating test payload or using --process-id)"
     )
     parser.add_argument(
         "--count",
@@ -180,16 +308,46 @@ def main():
     elif args.payload:
         with open(args.payload, "r") as f:
             base_payload = json.load(f)
+        
+        # Convert relative audio_file paths to absolute in loaded payloads
+        if "merged_mappings" in base_payload:
+            for mapping in base_payload["merged_mappings"]:
+                if "audio_file" in mapping:
+                    audio_path = Path(mapping["audio_file"])
+                    if not audio_path.is_absolute():
+                        audio_path = audio_path.resolve()
+                    if audio_path.exists():
+                        mapping["audio_file"] = str(audio_path)
+    elif args.process_id and args.audio_file:
+        # Build payload from database
+        print(f"📥 loading process_id from database: {args.process_id}")
+        row = get_db_row_by_process_id(args.process_id, args.db_path)
+        if row is None:
+            parser.error(f"Process ID '{args.process_id}' not found in database '{args.db_path}'")
+        
+        try:
+            base_payload = build_payload_from_db_row(row, args.audio_file)
+            print(f"✅ payload built from database")
+            print(f"   chunks: {len(base_payload['merged_mappings'])}")
+            print(f"   language: {base_payload['language_code']}")
+            print(f"   classification: {base_payload['language_classification']}")
+        except ValueError as e:
+            parser.error(str(e))
+        except FileNotFoundError as e:
+            parser.error(str(e))
     elif args.audio_file:
         # create test payload
         process_id = args.process_id or f"test_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        base_payload = create_test_payload(
-            process_id=process_id,
-            audio_file=args.audio_file,
-            language_code="en"
-        )
+        try:
+            base_payload = create_test_payload(
+                process_id=process_id,
+                audio_file=args.audio_file,
+                language_code="en"
+            )
+        except FileNotFoundError as e:
+            parser.error(str(e))
     else:
-        parser.error("Must provide --payload, --payload-json, or --audio-file")
+        parser.error("Must provide --payload, --payload-json, --audio-file, or --process-id with --audio-file")
     
     # queue tasks
     print(f"📤 queuing {args.count} task(s) to SQLite")
