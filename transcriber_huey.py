@@ -62,7 +62,11 @@ _ffmpeg_path: str | None = None
 def set_ffmpeg_path(path: str | None):
     """Set ffmpeg path for the worker."""
     global _ffmpeg_path
-    _ffmpeg_path = path
+    if path:
+        # Normalize path for Windows compatibility (handles forward/backslashes, etc.)
+        _ffmpeg_path = os.path.normpath(os.path.expanduser(path))
+    else:
+        _ffmpeg_path = None
 
 
 # Payload schemas
@@ -153,13 +157,22 @@ def extract_audio_segment(
     
     duration = end - start
     
-    # Use module-level ffmpeg path if set, otherwise find it
+    # Get ffmpeg path: command line arg > environment variable > auto-detection
     if _ffmpeg_path:
-        ffmpeg_exe = _ffmpeg_path
+        # Normalize path again in case it was set before normalization was added
+        ffmpeg_exe = os.path.normpath(_ffmpeg_path)
         if not os.path.exists(ffmpeg_exe):
             raise RuntimeError(f"ffmpeg not found at specified path: {ffmpeg_exe}")
     else:
-        ffmpeg_exe = _find_ffmpeg()  # Fallback to auto-detection
+        # Check environment variable
+        ffmpeg_path = os.getenv("FFMPEG_PATH")
+        if ffmpeg_path:
+            # Normalize environment variable path
+            ffmpeg_exe = os.path.normpath(ffmpeg_path)
+            if not os.path.exists(ffmpeg_exe):
+                raise RuntimeError(f"ffmpeg not found at FFMPEG_PATH: {ffmpeg_exe}")
+        else:
+            ffmpeg_exe = _find_ffmpeg()  # Fallback to auto-detection
     
     cmd = [
         ffmpeg_exe,

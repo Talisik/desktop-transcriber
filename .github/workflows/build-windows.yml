@@ -35,11 +35,22 @@ jobs:
       
       - name: Build huey_worker executable with PyInstaller
         run: |
-          pyinstaller huey_worker_windows.spec --clean
+          pyinstaller huey_worker_windows.spec --clean --noconfirm
       
-      - name: Build queue_simulator executable with PyInstaller
+      # - name: Build queue_simulator executable with PyInstaller
+      #   run: |
+      #     pyinstaller queue_simulator_windows.spec --clean
+      
+      - name: Verify executable exists
         run: |
-          pyinstaller queue_simulator_windows.spec --clean
+          if (Test-Path "dist\huey_worker.exe") {
+            Write-Host "✅ huey_worker.exe built successfully"
+            $fileInfo = Get-Item "dist\huey_worker.exe"
+            Write-Host "   Size: $([math]::Round($fileInfo.Length / 1MB, 2)) MB"
+          } else {
+            Write-Host "❌ huey_worker.exe not found!"
+            exit 1
+          }
       
       - name: Upload huey_worker artifact
         uses: actions/upload-artifact@v4
@@ -47,11 +58,12 @@ jobs:
           name: windows-huey-worker
           path: dist/huey_worker.exe
           retention-days: 30
+          if-no-files-found: error
       
-      - name: Upload queue_simulator artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-queue-simulator
-          path: dist/queue_simulator.exe
-          retention-days: 30
+      # - name: Upload queue_simulator artifact
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: windows-queue-simulator
+      #     path: dist/queue_simulator.exe
+      #     retention-days: 30
 
