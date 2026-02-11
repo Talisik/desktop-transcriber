@@ -8,6 +8,7 @@ Usage:
 Or use the huey command directly (if installed):
     huey consumer.py consumer.huey
 """
+import os
 import sys
 import subprocess
 from pathlib import Path
@@ -65,6 +66,8 @@ if __name__ == "__main__":
             set_ffmpeg_path(args.ffmpeg_path)
             # Get the validated path (it's normalized and validated now)
             validated_path = get_ffmpeg_path()
+            # Also set as environment variable so it persists across task executions
+            os.environ['FFMPEG_PATH'] = validated_path
             print(f"using ffmpeg: {validated_path}")
         except RuntimeError as e:
             print(f"ffmpeg validation failed: {e}")
