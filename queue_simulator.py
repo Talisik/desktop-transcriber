@@ -301,6 +301,13 @@ def main():
     # get payload
     if args.payload_json:
         base_payload = json.loads(args.payload_json)
+        # Convert relative audio_file paths to absolute to ensure worker can find files
+        if "merged_mappings" in base_payload:
+            for mapping in base_payload["merged_mappings"]:
+                if "audio_file" in mapping:
+                    # Always resolve to absolute path (let worker handle file not found errors)
+                    audio_path = Path(mapping["audio_file"]).resolve()
+                    mapping["audio_file"] = str(audio_path)
     elif args.payload:
         with open(args.payload, "r") as f:
             base_payload = json.load(f)
@@ -309,12 +316,9 @@ def main():
         if "merged_mappings" in base_payload:
             for mapping in base_payload["merged_mappings"]:
                 if "audio_file" in mapping:
-                    audio_path = Path(mapping["audio_file"])
-                    # Only convert if file exists (to avoid errors on invalid paths)
-                    if audio_path.exists():
-                        # Resolve to absolute path
-                        audio_path = audio_path.resolve()
-                        mapping["audio_file"] = str(audio_path)
+                    # Always resolve to absolute path (let worker handle file not found errors)
+                    audio_path = Path(mapping["audio_file"]).resolve()
+                    mapping["audio_file"] = str(audio_path)
     elif args.process_id and args.audio_file:
         # Build payload from database
         print(f"📥 loading process_id from database: {args.process_id}")
