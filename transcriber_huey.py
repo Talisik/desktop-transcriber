@@ -233,22 +233,22 @@ def extract_audio_segment(
     
     duration = end - start
     
-    # Get ffmpeg path: command line arg > environment variable > auto-detection
-    if _ffmpeg_path:
-        # Normalize path again in case it was set before normalization was added
+    # Get ffmpeg path: environment variable (most reliable in task context) > module global > auto-detection
+    # Prioritize FFMPEG_PATH env var since it persists across task executions
+    ffmpeg_path = os.getenv("FFMPEG_PATH")
+    if ffmpeg_path:
+        # Normalize environment variable path
+        ffmpeg_exe = os.path.normpath(ffmpeg_path)
+        if not os.path.exists(ffmpeg_exe):
+            raise RuntimeError(f"ffmpeg not found at FFMPEG_PATH: {ffmpeg_exe}")
+    elif _ffmpeg_path:
+        # Fall back to module global if env var not set
         ffmpeg_exe = os.path.normpath(_ffmpeg_path)
         if not os.path.exists(ffmpeg_exe):
             raise RuntimeError(f"ffmpeg not found at specified path: {ffmpeg_exe}")
     else:
-        # Check environment variable
-        ffmpeg_path = os.getenv("FFMPEG_PATH")
-        if ffmpeg_path:
-            # Normalize environment variable path
-            ffmpeg_exe = os.path.normpath(ffmpeg_path)
-            if not os.path.exists(ffmpeg_exe):
-                raise RuntimeError(f"ffmpeg not found at FFMPEG_PATH: {ffmpeg_exe}")
-        else:
-            ffmpeg_exe = _find_ffmpeg()  # Fallback to auto-detection
+        # Last resort: try to find in PATH (unreliable, but better than nothing)
+        ffmpeg_exe = _find_ffmpeg()
     
     # Normalize audio file path for Windows subprocess compatibility
     normalized_audio_file = os.path.normpath(audio_file)
