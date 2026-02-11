@@ -250,9 +250,12 @@ def extract_audio_segment(
         else:
             ffmpeg_exe = _find_ffmpeg()  # Fallback to auto-detection
     
+    # Normalize audio file path for Windows subprocess compatibility
+    normalized_audio_file = os.path.normpath(audio_file)
+    
     cmd = [
         ffmpeg_exe,
-        '-i', audio_file,
+        '-i', normalized_audio_file,
         '-ss', str(start),
         '-t', str(duration),
         '-acodec', 'pcm_s16le',  # wav format
@@ -307,16 +310,19 @@ def _process_single_chunk(
     
     temp_segment_file = None
     try:
-        # Use audio file path as-is (no forced absolute path conversion)
+        # Use audio file path as-is (trust queuer provides absolute path)
         audio_file = Path(chunk.audio_file)
         
         if not audio_file.exists():
             raise FileNotFoundError(f"Audio file not found: {audio_file}")
         
+        # Normalize path for Windows subprocess compatibility
+        audio_file_str = os.path.normpath(str(audio_file))
+        
         # Extract audio segment
         print(f"   extracting segment: {chunk.start}s - {chunk.end}s")
         temp_segment_file = extract_audio_segment(
-            audio_file=str(audio_file),  # Use path as-is
+            audio_file=audio_file_str,  # Use normalized path
             start=chunk.start,
             end=chunk.end
         )
