@@ -34,43 +34,43 @@ jobs:
         run: |
           pip install pyinstaller>=6.17.0
       
-      # - name: Build huey_worker executable with PyInstaller
-      #   run: |
-      #     pyinstaller huey_worker_windows.spec --clean --noconfirm
+      - name: Build huey_worker executable with PyInstaller
+        run: |
+          pyinstaller huey_worker_windows.spec --clean --noconfirm
       
       - name: Build queue_simulator executable with PyInstaller
         run: |
           pyinstaller queue_simulator_windows.spec --clean --noconfirm
       
-      # - name: Verify huey_worker executable exists
-      #   run: |
-      #     if (Test-Path "dist\huey_worker.exe") {
-      #       Write-Host "✅ huey_worker.exe built successfully"
-      #       $fileInfo = Get-Item "dist\huey_worker.exe"
-      #       Write-Host "   Size: $([math]::Round($fileInfo.Length / 1MB, 2)) MB"
-      #     } else {
-      #       Write-Host "❌ huey_worker.exe not found!"
-      #       exit 1
-      #     }
+      - name: Verify huey_worker executable exists
+        run: |
+          if (Test-Path "dist\huey_worker.exe") {
+            Write-Host "huey_worker.exe built successfully"
+            $fileInfo = Get-Item "dist\huey_worker.exe"
+            Write-Host "   Size: $([math]::Round($fileInfo.Length / 1MB, 2)) MB"
+          } else {
+            Write-Host "huey_worker.exe not found!"
+            exit 1
+          }
       
       - name: Verify queue_simulator executable exists
         run: |
           if (Test-Path "dist\queue_simulator.exe") {
-            Write-Host "✅ queue_simulator.exe built successfully"
+            Write-Host "queue_simulator.exe built successfully"
             $fileInfo = Get-Item "dist\queue_simulator.exe"
             Write-Host "   Size: $([math]::Round($fileInfo.Length / 1MB, 2)) MB"
           } else {
-            Write-Host "❌ queue_simulator.exe not found!"
+            Write-Host "queue_simulator.exe not found!"
             exit 1
           }
       
-      # - name: Upload huey_worker artifact
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: windows-huey-worker
-      #     path: dist/huey_worker.exe
-      #     retention-days: 30
-      #     if-no-files-found: error
+      - name: Upload huey_worker artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-huey-worker
+          path: dist/huey_worker.exe
+          retention-days: 30
+          if-no-files-found: error
       
       - name: Upload queue_simulator artifact
         uses: actions/upload-artifact@v4

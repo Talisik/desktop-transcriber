@@ -300,7 +300,7 @@ def _process_single_chunk(
     """
     chunk_idx, chunk, total_chunks, audio_file_path = chunk_data
     
-    print(f"\n📦 processing chunk {chunk_idx}/{total_chunks} (thread)")
+    print(f"\nprocessing chunk {chunk_idx}/{total_chunks} (thread)")
     print(f"   audio_file: {Path(chunk.audio_file).name}")
     print(f"   language: {chunk.language_code}")
     print(f"   time range: {chunk.start}s - {chunk.end}s")
@@ -357,7 +357,7 @@ def _process_single_chunk(
         chunk.transcription_backend = "whisperx"
         chunk.failed = False
         
-        print(f"✓ chunk {chunk_idx} completed: {len(chunk_segments)} segments")
+        print(f"chunk {chunk_idx} completed: {len(chunk_segments)} segments")
         
         # Cleanup
         del model
@@ -369,7 +369,7 @@ def _process_single_chunk(
         
     except Exception as e:
         error_msg = str(e)
-        print(f"❌ chunk {chunk_idx} failed: {error_msg}")
+        print(f"chunk {chunk_idx} failed: {error_msg}")
         chunk.failed = True
         chunk.text = ""
         chunk.segments = []
@@ -382,7 +382,7 @@ def _process_single_chunk(
             try:
                 os.unlink(temp_segment_file)
             except Exception as e:
-                print(f"⚠️  warning: failed to delete temp file {temp_segment_file}: {e}")
+                print(f"warning: failed to delete temp file {temp_segment_file}: {e}")
 
 
 def _transcribe_payload_task_impl(
@@ -402,13 +402,31 @@ def _transcribe_payload_task_impl(
     Returns:
         Path to saved transcript JSON file
     """
-    print(f"🎬 starting transcription task")
+    print(f"starting transcription task")
     
     # validate payload
     payload_schema = TranscriptionPayloadSchema(**payload)
     process_id = payload_schema.process_id
     print(f"   process_id: {process_id}")
     print(f"   chunks: {len(payload_schema.merged_mappings)}")
+    
+    # Log audio file path(s) from payload
+    audio_files = []
+    for mapping in payload_schema.merged_mappings:
+        if mapping.audio_file:
+            audio_files.append(mapping.audio_file)
+    
+    if audio_files:
+        # Show unique audio files (in case multiple chunks use same file)
+        unique_files = list(set(audio_files))
+        if len(unique_files) == 1:
+            print(f"   audio_file: {unique_files[0]}")
+        else:
+            print(f"   audio_files: {len(unique_files)} unique file(s)")
+            for audio_file in unique_files:
+                print(f"      - {audio_file}")
+    else:
+        print(f"   warning: no audio_file found in payload")
     
     # collect all segments from all chunks
     all_segments = []
@@ -458,7 +476,7 @@ def _transcribe_payload_task_impl(
                 all_segments.extend(chunk_segments)
                 
             except Exception as e:
-                print(f"❌ chunk {chunk_idx} exception: {str(e)}")
+                print(f"chunk {chunk_idx} exception: {str(e)}")
                 # Get chunk from original list
                 chunk = payload_schema.merged_mappings[chunk_idx - 1]
                 chunk.failed = True
@@ -470,7 +488,7 @@ def _transcribe_payload_task_impl(
     # sort segments chronologically
     all_segments.sort(key=lambda x: x.get("start", 0))
     
-    print(f"\n📊 merging results:")
+    print(f"\nmerging results:")
     print(f"   total segments: {len(all_segments)}")
     
     # build transcript output
@@ -496,7 +514,7 @@ def _transcribe_payload_task_impl(
     with open(filepath, "w") as f:
         json.dump(transcript_data, f, indent=2)
     
-    print(f"✅ transcript saved: {filepath}")
+    print(f"transcript saved: {filepath}")
     
     return str(filepath)
 
@@ -606,7 +624,7 @@ def main():
         parser.error("HF_TOKEN required for diarization (use --hf-token or set HF_TOKEN env var)")
     
     # queue task
-    print(f"📤 queuing transcription task")
+    print(f"queuing transcription task")
     print(f"   process_id: {payload.get('process_id', 'unknown')}")
     print(f"   model: {args.model}")
     print(f"   device: {args.device}")
@@ -634,10 +652,10 @@ def main():
     if args.wait:
         print(f"⏳ waiting for task to complete...")
         result = task.get(blocking=True, timeout=3600)  # 1 hour timeout
-        print(f"✅ task completed")
-        print(f"📄 result: {result}")
+        print(f"task completed")
+        print(f"result: {result}")
     else:
-        print(f"✅ task queued (task_id: {task.id})")
+        print(f"task queued (task_id: {task.id})")
         print(f"   run worker: python huey_worker.py")
 
 

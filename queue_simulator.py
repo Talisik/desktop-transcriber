@@ -92,7 +92,7 @@ def get_db_row_by_process_id(
         conn.close()
         return row
     except (sqlite3.Error, FileNotFoundError) as e:
-        print(f"❌ Error querying database: {e}")
+        print(f"Error querying database: {e}")
         return None
 
 
@@ -324,7 +324,7 @@ def main():
         
         try:
             base_payload = build_payload_from_db_row(row, args.audio_file)
-            print(f"✅ payload built from database")
+            print(f"payload built from database")
             print(f"   chunks: {len(base_payload['merged_mappings'])}")
             print(f"   language: {base_payload['language_code']}")
             print(f"   classification: {base_payload['language_classification']}")
@@ -347,9 +347,20 @@ def main():
         parser.error("Must provide --payload, --payload-json, --audio-file, or --process-id with --audio-file")
     
     # queue tasks
-    print(f"📤 queuing {args.count} task(s) to SQLite")
+    print(f"queuing {args.count} task(s) to SQLite")
     print(f"   model: {args.model}")
     print(f"   output_dir: {args.output_dir}")
+    
+    # Log audio file info from base payload
+    if "merged_mappings" in base_payload:
+        audio_files = [m.get("audio_file") for m in base_payload["merged_mappings"] if m.get("audio_file")]
+        if audio_files:
+            unique_files = list(set(audio_files))
+            if len(unique_files) == 1:
+                print(f"   audio_file: {unique_files[0]}")
+            else:
+                print(f"   audio_files: {len(unique_files)} unique file(s) across {len(base_payload['merged_mappings'])} chunk(s)")
+    
     print()
     
     task_ids = []
@@ -374,14 +385,35 @@ def main():
         
         task_ids.append(task_id)
         process_id = payload.get("process_id", "unknown")
-        print(f"✅ [{i+1}/{args.count}] queued: {process_id} (task_id: {task_id})")
+        
+        # Log audio file path(s) from payload
+        audio_files = []
+        if "merged_mappings" in payload:
+            for mapping in payload["merged_mappings"]:
+                if "audio_file" in mapping:
+                    audio_files.append(mapping["audio_file"])
+        
+        if audio_files:
+            # Show unique audio files (in case multiple chunks use same file)
+            unique_files = list(set(audio_files))
+            if len(unique_files) == 1:
+                print(f"[{i+1}/{args.count}] queued: {process_id} (task_id: {task_id})")
+                print(f"   audio_file: {unique_files[0]}")
+            else:
+                print(f"[{i+1}/{args.count}] queued: {process_id} (task_id: {task_id})")
+                print(f"   audio_files: {len(unique_files)} unique file(s)")
+                for audio_file in unique_files:
+                    print(f"      - {audio_file}")
+        else:
+            print(f"[{i+1}/{args.count}] queued: {process_id} (task_id: {task_id})")
+            print(f"   warning: no audio_file found in payload")
         
         if args.delay > 0 and i < args.count - 1:
             import time
             time.sleep(args.delay)
     
     print()
-    print(f"🎉 queued {len(task_ids)} task(s) successfully")
+    print(f"queued {len(task_ids)} task(s) successfully")
     print(f"   run worker: python huey_worker.py")
     
     # get queue db filename from env

@@ -65,12 +65,12 @@ if __name__ == "__main__":
             set_ffmpeg_path(args.ffmpeg_path)
             # Get the validated path (it's normalized and validated now)
             validated_path = get_ffmpeg_path()
-            print(f"📹 using ffmpeg: {validated_path}")
+            print(f"using ffmpeg: {validated_path}")
         except RuntimeError as e:
-            print(f"❌ ffmpeg validation failed: {e}")
+            print(f"ffmpeg validation failed: {e}")
             sys.exit(1)
     
-    print("🚀 starting huey worker")
+    print("starting huey worker")
     print("   press Ctrl+C to stop\n")
     
     try:
@@ -82,9 +82,9 @@ if __name__ == "__main__":
             # Running as script - use subprocess
             run_consumer_subprocess()
     except KeyboardInterrupt:
-        print("\n👋 worker stopped")
+        print("\nworker stopped")
     except Exception as e:
-        print(f"❌ error: {e}")
+        print(f"error: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)
