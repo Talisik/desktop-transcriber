@@ -30,8 +30,8 @@ def create_test_payload(
     end: float = 60.0
 ) -> dict:
     """Create a test payload with a single chunk."""
-    # Use audio file path as-is (no forced absolute path conversion)
-    audio_path = Path(audio_file)
+    # Convert relative paths to absolute to ensure worker can find files
+    audio_path = Path(audio_file).resolve()
     
     if not audio_path.exists():
         raise FileNotFoundError(f"Audio file not found: {audio_path}")
@@ -51,7 +51,7 @@ def create_test_payload(
         "merged_mappings": [
             {
                 "failed": False,
-                "audio_file": str(audio_path),  # Use path as-is
+                "audio_file": str(audio_path),  # Use absolute path
                 "language_code": language_code,
                 "text": "",
                 "confidence": 0.9,
@@ -127,8 +127,8 @@ def build_payload_from_db_row(
     if status != "completed":
         raise ValueError(f"Process ID '{process_id}' status is '{status}', expected 'completed'")
     
-    # Use audio file path as-is (no forced absolute path conversion)
-    audio_path = Path(audio_file_path)
+    # Convert relative paths to absolute to ensure worker can find files
+    audio_path = Path(audio_file_path).resolve()
     
     if not audio_path.exists():
         raise FileNotFoundError(f"Audio file not found: {audio_path}")
@@ -156,7 +156,7 @@ def build_payload_from_db_row(
     multilingual_mode = metadata.get("multilingual_mode", False)
     language_classification = "multilingual" if multilingual_mode else "single_language"
     
-    # Map chunks to merged_mappings (use path as-is)
+    # Map chunks to merged_mappings (use absolute path)
     merged_mappings = map_chunks_to_merged_mappings(language_chunks, str(audio_path))
     
     # Build payload
@@ -305,12 +305,15 @@ def main():
         with open(args.payload, "r") as f:
             base_payload = json.load(f)
         
-        # Keep audio_file paths as-is (no forced absolute path conversion)
+        # Convert relative audio_file paths to absolute to ensure worker can find files
         if "merged_mappings" in base_payload:
             for mapping in base_payload["merged_mappings"]:
                 if "audio_file" in mapping:
                     audio_path = Path(mapping["audio_file"])
+                    # Only convert if file exists (to avoid errors on invalid paths)
                     if audio_path.exists():
+                        # Resolve to absolute path
+                        audio_path = audio_path.resolve()
                         mapping["audio_file"] = str(audio_path)
     elif args.process_id and args.audio_file:
         # Build payload from database
