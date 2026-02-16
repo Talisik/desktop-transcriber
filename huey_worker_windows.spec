@@ -25,6 +25,9 @@ pyannote_submodules = collect_submodules('pyannote')
 huey_datas = collect_data_files('huey')
 huey_submodules = collect_submodules('huey')
 
+# Comprehensive transformers collection to fix torchcodec and metadata issues
+transformers_datas, transformers_binaries, transformers_hiddenimports = collect_all('transformers')
+
 # hidden imports for ML libs + huey
 hiddenimports = [
     'whisperx',
@@ -58,6 +61,11 @@ hiddenimports = [
     'pyannote.audio.pipelines',
     'pyannote.audio.pipelines.speaker_diarization',
     'pyannote.audio.pipelines.speaker_verification',
+    'pyannote.audio.pipelines.utils',
+    'pytorch_lightning',
+    'torchmetrics',
+    'semver',
+    'pandas',
     # huey imports
     'huey',
     'huey.bin',
@@ -82,13 +90,13 @@ hiddenimports = [
     'transcriber.concretions.whisperx_implementation.chemas.custom_types',
     'transcriber.concretions.whisperx_implementation.chemas.custom_types.parameter_types',
     'pydantic',
-] + whisperx_submodules + huey_submodules + speechbrain_submodules + list(speechbrain_hiddenimports) + pyannote_submodules + list(pyannote_hiddenimports)
+] + whisperx_submodules + huey_submodules + speechbrain_submodules + list(speechbrain_hiddenimports) + pyannote_submodules + list(pyannote_hiddenimports) + list(transformers_hiddenimports)
 
 a = Analysis(
     ['huey_worker.py'],
     pathex=[],
-    binaries=speechbrain_binaries + pyannote_binaries,
-    datas=whisperx_datas + faster_whisper_datas + lightning_fabric_datas + speechbrain_datas + pyannote_datas + huey_datas,
+    binaries=speechbrain_binaries + pyannote_binaries + transformers_binaries,
+    datas=whisperx_datas + faster_whisper_datas + lightning_fabric_datas + speechbrain_datas + pyannote_datas + huey_datas + transformers_datas,
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},

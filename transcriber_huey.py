@@ -5,6 +5,7 @@ Processes payloads with language-detected audio chunks and transcribes them usin
 from transcriber.concretions.whisperx_implementation.chemas.custom_types.parameter_types import Device, ComputeType, WhisperModel
 from transcriber.concretions.whisperx_implementation.chemas.payload.transcriber_argument_schema import WhisperXTranscriberArgumentSchema
 from transcriber.concretions.whisperx_implementation.whisperx_transcriber import WhisperXTranscriber
+from transcriber.utils import convert_to_cc, cc_to_srt, cc_to_vtt, create_paragraphed_transcript
 from huey import SqliteHuey
 from pydantic import BaseModel
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -605,6 +606,104 @@ def _transcribe_payload_task_impl(
         json.dump(transcript_data, f, indent=2)
 
     print(f"transcript saved: {filepath}")
+
+    # generate closed caption (CC) transcript
+    print(f"\ngenerating closed caption transcript:")
+    
+    # get CPL from environment variable (default: 40)
+    cpl = int(os.getenv("CC_CPL", "40"))
+    print(f"   characters per line (CPL): {cpl}")
+    
+    # convert segments to CC format
+    cc_result = convert_to_cc(
+        segments=all_segments,
+        cpl=cpl,
+        segment_start_index=0,
+        offset=0.0  # no offset needed since timestamps are already absolute
+    )
+    
+    # build CC transcript data
+    cc_transcript_data = {
+        "process_id": process_id,
+        "machine_name": machine_name,
+        "video_file": video_file,
+        "model_name": whisper_model,
+        "language": payload_schema.language_code,
+        "cpl": cpl,
+        "cc_segments": cc_result["cc_segments"],
+        "total_segments": cc_result["total_segments"]
+    }
+    
+    # save CC transcript
+    cc_filename = f"{process_id}_cc_transcript.json"
+    cc_filepath = output_path / cc_filename
+    
+    with open(cc_filepath, "w") as f:
+        json.dump(cc_transcript_data, f, indent=2)
+    
+    print(f"   CC segments: {cc_result['total_segments']}")
+    print(f"   CC transcript saved: {cc_filepath}")
+
+    # generate subtitle files (SRT & VTT)
+    print(f"\ngenerating subtitle files:")
+    
+    # SRT format
+    srt_content = cc_to_srt(cc_result["cc_segments"])
+    srt_filename = f"{process_id}.srt"
+    srt_filepath = output_path / srt_filename
+    
+    with open(srt_filepath, "w", encoding="utf-8") as f:
+        f.write(srt_content)
+    
+    print(f"   SRT subtitle saved: {srt_filepath}")
+    
+    # VTT format
+    vtt_content = cc_to_vtt(cc_result["cc_segments"])
+    vtt_filename = f"{process_id}.vtt"
+    vtt_filepath = output_path / vtt_filename
+    
+    with open(vtt_filepath, "w", encoding="utf-8") as f:
+        f.write(vtt_content)
+    
+    print(f"   VTT subtitle saved: {vtt_filepath}")
+    
+    # generate paragraphed transcript (30s splits)
+    print(f"\ngenerating paragraphed transcript:")
+    
+    # get target duration from environment variable (default: 30s)
+    target_duration = float(os.getenv("PARAGRAPH_DURATION", "30.0"))
+    max_duration = float(os.getenv("PARAGRAPH_MAX_DURATION", "35.0"))
+    print(f"   target duration: {target_duration}s (max: {max_duration}s)")
+    
+    # create paragraphed transcript
+    paragraph_result = create_paragraphed_transcript(
+        cc_segments=cc_result["cc_segments"],
+        target_duration=target_duration,
+        max_duration=max_duration
+    )
+    
+    # build paragraphed transcript data
+    paragraph_transcript_data = {
+        "process_id": process_id,
+        "machine_name": machine_name,
+        "video_file": video_file,
+        "model_name": whisper_model,
+        "language": payload_schema.language_code,
+        "target_duration": target_duration,
+        "max_duration": max_duration,
+        "paragraphs": paragraph_result["paragraphs"],
+        "total_paragraphs": paragraph_result["total_paragraphs"]
+    }
+    
+    # save paragraphed transcript
+    paragraph_filename = f"{process_id}_paragraph_transcript.json"
+    paragraph_filepath = output_path / paragraph_filename
+    
+    with open(paragraph_filepath, "w") as f:
+        json.dump(paragraph_transcript_data, f, indent=2)
+    
+    print(f"   paragraphs: {paragraph_result['total_paragraphs']}")
+    print(f"   paragraph transcript saved: {paragraph_filepath}")
 
     return str(filepath)
 
