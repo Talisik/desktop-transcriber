@@ -166,6 +166,17 @@ The worker:
 
 ## Troubleshooting
 
+### Windows [WinError 2] (FFmpeg not found)
+
+On Windows, if you see `[WinError 2] The system cannot find the file specified` during extraction or transcription, it usually means FFmpeg is not in your system `PATH`.
+
+**Solution:**
+Use the `--ffmpeg-path` argument when starting the worker:
+```bash
+python huey_worker.py --ffmpeg-path "C:\path\to\ffmpeg\bin\ffmpeg.exe"
+```
+The worker will automatically add this directory to the system `PATH` for the duration of its execution, allowing all libraries to find FFmpeg.
+
 ### Worker Won't Start
 
 **Error: `cannot import name 'consumer_main'`**
@@ -301,6 +312,9 @@ sqlite3 transcribe_queue_default.db "SELECT id, name FROM task ORDER BY id DESC 
 4. **Keep worker running** - restart automatically on failure
 5. **Monitor logs** - watch for errors and performance issues
 6. **Clear old queue databases** periodically if needed
+
+
+
 
 
 
