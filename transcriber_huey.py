@@ -41,6 +41,26 @@ try:
 except ImportError:
     pass
 
+# CRITICAL: monkey patch importlib.metadata to handle missing packages in PyInstaller
+# transformers/audio_utils.py tries to check torchcodec version but metadata isn't available in frozen executables
+try:
+    import importlib.metadata
+    _original_metadata_version = importlib.metadata.version
+    
+    def _patched_metadata_version(name: str):
+        """return dummy version if package metadata not found (PyInstaller frozen executable)"""
+        try:
+            return _original_metadata_version(name)
+        except importlib.metadata.PackageNotFoundError:
+            # transformers expects a version string for torchcodec, return dummy to prevent crash
+            if name == "torchcodec":
+                return "0.0.0"
+            raise
+    
+    importlib.metadata.version = _patched_metadata_version
+except (ImportError, AttributeError):
+    pass
+
 # now safe to import everything else
 
 # CRITICAL: Register module with correct name BEFORE any decorators run
