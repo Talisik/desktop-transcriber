@@ -40,7 +40,7 @@ def download_transcription_model(
     if compute_type is None:
         compute_type = "float32" if device == "cpu" else "float16"
     
-    print(f"📥 downloading whisper model: {whisper_model}")
+    print(f"downloading whisper model: {whisper_model}")
     model = whisperx.load_model(
         whisper_model, 
         device, 
@@ -55,7 +55,7 @@ def download_transcription_model(
     if device == "cuda":
         torch.cuda.empty_cache()
     
-    print("✅ all models downloaded and cached")
+    print("all models downloaded and cached")
 
 
 def download_diarization_model(
@@ -63,7 +63,7 @@ def download_diarization_model(
     device: str = "cuda",
     download_root: str | None = None
 ):
-    print(f"📥 downloading diarization model")
+    print(f"downloading diarization model")
     diarize_model = DiarizationPipeline(
         use_auth_token=hf_token, 
         device=device,

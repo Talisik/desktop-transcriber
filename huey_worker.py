@@ -30,7 +30,7 @@ if __name__ == "__main__":
                 print(f"🔧 [PRE-START] FFmpeg injected into PATH: {ffmpeg_dir}")
                 os.environ["PATH"] = ffmpeg_dir + os.pathsep + path_env
         else:
-            print(f"⚠️ [PRE-START] FFmpeg not found at: {ffmpeg_exe}")
+            print(f"WARNING [PRE-START] FFmpeg not found at: {ffmpeg_exe}")
 
 # 2. NOW it is safe to import everything else (heavy modules)
 import subprocess
@@ -83,12 +83,12 @@ if __name__ == "__main__":
         try:
             set_ffmpeg_path(args.ffmpeg_path)
             validated_path = get_ffmpeg_path()
-            print(f"🚀 starting huey worker with ffmpeg: {validated_path}")
+            print(f"starting huey worker with ffmpeg: {validated_path}")
         except RuntimeError as e:
-            print(f"❌ ffmpeg validation failed: {e}")
+            print(f"ERROR: ffmpeg validation failed: {e}")
             sys.exit(1)
     else:
-        print("🚀 starting huey worker (auto-detecting ffmpeg)")
+        print("starting huey worker (auto-detecting ffmpeg)")
 
     print("   press Ctrl+C to stop\n")
 

@@ -60,7 +60,7 @@ def main():
     # validate audio file exists
     audio_path = Path(args.audio_file)
     if not audio_path.exists():
-        print(f"❌ error: audio file not found: {args.audio_file}")
+        print(f"ERROR: audio file not found: {args.audio_file}")
         sys.exit(1)
     
     # use provided device (defaults to cpu)
@@ -101,9 +101,9 @@ def main():
         output_path.parent.mkdir(parents=True, exist_ok=True)
         with open(output_path, 'w', encoding='utf-8') as f:
             json.dump(result, f, indent=2, ensure_ascii=False)
-        print(f"\n✅ transcription saved to: {args.output}")
+        print(f"\ntranscription saved to: {args.output}")
     else:
-        print("\n✅ transcription result:")
+        print("\ntranscription result:")
         print(json.dumps(result, indent=2, ensure_ascii=False))
 
 

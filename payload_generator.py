@@ -278,13 +278,13 @@ if __name__ == "__main__":
     )
     
     if payload is None:
-        print(f"❌ Process ID '{args.process_id}' not found in database")
+        print(f"ERROR: Process ID '{args.process_id}' not found in database")
         exit(1)
     
     # Save or print
     if args.output:
         output_file = save_payload_to_file(payload, args.output)
-        print(f"✅ Payload saved to: {output_file}")
+        print(f"Payload saved to: {output_file}")
     else:
         print(json.dumps(payload, indent=2))
 

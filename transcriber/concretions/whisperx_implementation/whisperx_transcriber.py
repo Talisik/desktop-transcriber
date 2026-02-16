@@ -36,7 +36,7 @@ def validate_language_code(language: str | None) -> str | None:
         return language_lower
     
     # Map unsupported language codes to English
-    print(f"⚠️  language code '{language}' not supported, using 'en' instead")
+    print(f"WARNING: language code '{language}' not supported, using 'en' instead")
     return "en"
 
 
@@ -62,7 +62,7 @@ class WhisperXTranscriber(TranscriberBase):
         if device is None:
             device = getattr(self, 'device', "cuda" if torch.cuda.is_available() else "cpu")
         
-        print(f"📥 downloading diarization model")
+        print(f"downloading diarization model")
         self.diarization_model = DiarizationPipeline(
             use_auth_token=hf_token, 
             device=device,
@@ -118,7 +118,7 @@ class WhisperXTranscriber(TranscriberBase):
         if compute_type is None:
             compute_type = "float32" if device == "cpu" else "float16"
         
-        print(f"📥 downloading whisper model: {whisper_model}")
+        print(f"downloading whisper model: {whisper_model}")
         model = whisperx.load_model(
             whisper_model, 
             device, 
@@ -133,7 +133,7 @@ class WhisperXTranscriber(TranscriberBase):
         if device == "cuda":
             torch.cuda.empty_cache()
         
-        print("✅ all models downloaded and cached")
+        print("all models downloaded and cached")
 
 
     def __whisperx_transcribe(

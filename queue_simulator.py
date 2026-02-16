@@ -321,7 +321,7 @@ def main():
                     mapping["audio_file"] = str(audio_path)
     elif args.process_id and args.audio_file:
         # Build payload from database
-        print(f"📥 loading process_id from database: {args.process_id}")
+        print(f"loading process_id from database: {args.process_id}")
         row = get_db_row_by_process_id(args.process_id, args.db_path)
         if row is None:
             parser.error(f"Process ID '{args.process_id}' not found in database '{args.db_path}'")
