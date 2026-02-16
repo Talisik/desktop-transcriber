@@ -60,7 +60,7 @@ jobs:
         with:
           name: windows-huey-worker
           path: dist/huey_worker.exe
-          retention-days: 30
+          retention-days: 1
           if-no-files-found: error
       
       # - name: Upload queue_simulator artifact
