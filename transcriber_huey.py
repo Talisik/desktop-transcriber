@@ -386,6 +386,16 @@ def _process_single_chunk(
             start=chunk.start,
             end=chunk.end
         )
+        
+        # Validate extracted segment
+        if not os.path.exists(temp_segment_file):
+            raise FileNotFoundError(f"Extracted segment file not created: {temp_segment_file}")
+        
+        segment_size = os.path.getsize(temp_segment_file)
+        if segment_size == 0:
+            raise ValueError(f"Extracted segment is empty (0 bytes): {temp_segment_file}")
+        
+        print(f"   segment extracted: {segment_size / 1024:.2f} KB")
 
         # Create transcriber instance for this thread
         # Each thread gets its own instance to avoid conflicts

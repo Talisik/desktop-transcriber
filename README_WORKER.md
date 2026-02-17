@@ -322,3 +322,4 @@ sqlite3 transcribe_queue_default.db "SELECT id, name FROM task ORDER BY id DESC 
 
 
 
+

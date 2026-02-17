@@ -77,19 +77,67 @@ class WhisperXTranscriber(TranscriberBase):
         if device is None:
             device = getattr(self, 'device', "cuda" if torch.cuda.is_available() else "cpu")
         
-        # Use "en" as default if language is "tl" or unsupported
-        # Alignment model doesn't support Tagalog
-        alignment_language = "en" if language_code == "tl" else language_code
+        # Try to load alignment model for requested language
+        # Fall back to English if language not supported
+        alignment_language = language_code
         
-        self.alignment_model = whisperx.load_align_model(
-            language_code=alignment_language, 
-            device=device
-        )
-        print(f"✓ alignment model downloaded (language: {alignment_language})")
+        try:
+            self.alignment_model = whisperx.load_align_model(
+                language_code=alignment_language, 
+                device=device
+            )
+            print(f"alignment model downloaded (language: {alignment_language})")
+        except ValueError as e:
+            # Language not supported, fall back to English
+            if "No default align-model for language" in str(e):
+                print(f"WARNING: No alignment model for language '{language_code}', falling back to English")
+                alignment_language = "en"
+                self.alignment_model = whisperx.load_align_model(
+                    language_code=alignment_language, 
+                    device=device
+                )
+                print(f"alignment model downloaded (language: {alignment_language})")
+            else:
+                raise  # Re-raise if it's a different error
 
     @staticmethod
     def __load_audio(audio_file: str):
-        return whisperx.load_audio(audio_file)
+        """
+        Load audio file and validate format.
+        Ensures audio is in correct shape for WhisperX processing.
+        """
+        import numpy as np
+        import os
+        
+        # Check if file exists and has content
+        if not os.path.exists(audio_file):
+            raise FileNotFoundError(f"Audio file not found: {audio_file}")
+        
+        file_size = os.path.getsize(audio_file)
+        if file_size == 0:
+            raise ValueError(f"Audio file is empty: {audio_file}")
+        
+        # Load audio using whisperx
+        audio = whisperx.load_audio(audio_file)
+        
+        # Validate and reshape audio
+        if audio is None:
+            raise ValueError(f"Failed to load audio from: {audio_file}")
+        
+        # Ensure audio is numpy array
+        if not isinstance(audio, np.ndarray):
+            raise TypeError(f"Audio must be numpy array, got {type(audio)}")
+        
+        # Ensure audio is 1D (whisperx expects mono)
+        if len(audio.shape) > 1:
+            print(f"WARNING: Audio has multiple channels, converting to mono")
+            audio = audio.mean(axis=0)
+        
+        # Validate audio has samples
+        if len(audio) == 0:
+            raise ValueError(f"Audio has no samples: {audio_file}")
+        
+        return audio
 
     def __lazy_download_transcription_model(
         self,
@@ -208,11 +256,10 @@ class WhisperXTranscriber(TranscriberBase):
         if self.alignment_model is None:
             # Get detected language from result, or use payload language, or default to "en"
             language_code = payload.language or result.get("language", "en")
-            # Map "tl" to "en" for alignment
-            alignment_language = "en" if language_code == "tl" else language_code
             device_str = str(payload.device)
+            # Let the method handle fallback to English for unsupported languages
             self.__lazy_download_alignment_model(
-                language_code=alignment_language,
+                language_code=language_code,
                 device=device_str
             )
 
