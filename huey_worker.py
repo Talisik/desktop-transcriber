@@ -27,7 +27,7 @@ if __name__ == "__main__":
             ffmpeg_dir = os.path.dirname(os.path.abspath(ffmpeg_exe))
             path_env = os.environ.get("PATH", "")
             if ffmpeg_dir not in path_env.split(os.pathsep):
-                print(f"🔧 [PRE-START] FFmpeg injected into PATH: {ffmpeg_dir}")
+                print(f"[PRE-START] FFmpeg injected into PATH: {ffmpeg_dir}")
                 os.environ["PATH"] = ffmpeg_dir + os.pathsep + path_env
         else:
             print(f"WARNING [PRE-START] FFmpeg not found at: {ffmpeg_exe}")

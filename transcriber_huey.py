@@ -142,7 +142,7 @@ def _inject_ffmpeg_to_path(ffmpeg_exe_path: str):
     path_env = os.environ.get("PATH", "")
 
     if ffmpeg_dir not in path_env.split(os.pathsep):
-        print(f"🔧 adding ffmpeg directory to PATH: {ffmpeg_dir}")
+        print(f"adding ffmpeg directory to PATH: {ffmpeg_dir}")
         os.environ["PATH"] = ffmpeg_dir + os.pathsep + path_env
 
 

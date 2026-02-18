@@ -43,7 +43,7 @@ When started, the worker will:
 ### Startup Output
 
 ```
-🚀 starting huey worker
+starting huey worker
    press Ctrl+C to stop
 
 [2026-02-09 16:26:42,498] INFO:huey.consumer:MainThread:Huey consumer started with 1 thread, PID 80805
@@ -68,11 +68,11 @@ When a task is executed, you'll see:
 
 ```
 [2026-02-09 16:27:03,788] INFO:huey:Worker-1:Executing transcriber_huey.transcribe_payload_task: 77c8eb6c-60bd-4671-a919-5c7b39e998ad 2 retries
-🎬 starting transcription task
+starting transcription task
    process_id: test_20260209_162702
    chunks: 1
 
-📦 processing chunk 1/1
+processing chunk 1/1
    audio_file: 5min.mp4
    language: en
    time range: 0.0s - 60.0s
@@ -83,20 +83,20 @@ When a task is executed, you'll see:
 ```
 ✓ chunk 1 completed: 45 segments
 
-📊 merging results:
+merging results:
    total segments: 45
-✅ transcript saved: output/test_20260209_162702_transcript.json
+transcript saved: output/test_20260209_162702_transcript.json
 [2026-02-09 16:27:05,818] INFO:huey:Worker-1:transcriber_huey.transcribe_payload_task: 77c8eb6c-60bd-4671-a919-5c7b39e998ad 2 retries executed in 2.029s
 ```
 
 ### Task Failure
 
 ```
-❌ chunk 1 failed: [error message]
+chunk 1 failed: [error message]
 
-📊 merging results:
+merging results:
    total segments: 0
-✅ transcript saved: output/test_20260209_162702_transcript.json
+transcript saved: output/test_20260209_162702_transcript.json
 ```
 
 Failed chunks are marked in the output transcript but don't stop the overall process.
@@ -112,12 +112,12 @@ Failed chunks are marked in the output transcript but don't stop the overall pro
 
 ### Task Progress
 
-- `🎬 starting transcription task`: Task begins
-- `📦 processing chunk X/Y`: Processing audio chunk
+- `starting transcription task`: Task begins
+- `processing chunk X/Y`: Processing audio chunk
 - `✓ chunk X completed`: Chunk successfully processed
-- `❌ chunk X failed`: Chunk processing failed
-- `📊 merging results`: Combining all chunks
-- `✅ transcript saved`: Final transcript written
+- `chunk X failed`: Chunk processing failed
+- `merging results`: Combining all chunks
+- `transcript saved`: Final transcript written
 
 ## Environment Variables
 
