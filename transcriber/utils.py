@@ -273,6 +273,7 @@ def create_paragraphed_transcript(
     paragraphs = []
     current_paragraph = []
     current_texts = []
+    words = []
     paragraph_start_time = None
     paragraph_start_seconds = None
     
@@ -310,6 +311,7 @@ def create_paragraphed_transcript(
                 "index": len(paragraphs),
                 "text": paragraph_text,
                 "start": paragraph_start_time,
+                "words": words,
                 "end": paragraph_end_time,
                 "duration": round(duration, 3),
                 "word_count": word_count,
@@ -321,11 +323,16 @@ def create_paragraphed_transcript(
             current_texts = [segment["text"]]
             paragraph_start_time = segment["start"]
             paragraph_start_seconds = segment_start_seconds
+            words = segment.get("words", [])
         else:
             # add to current paragraph
             current_paragraph.append(segment)
             current_texts.append(segment["text"])
-    
+            segment_words = segment["words"]
+            words.extend(segment_words)
+        
+
+
     # save final paragraph
     if current_paragraph:
         paragraph_text = " ".join(current_texts)
@@ -337,6 +344,7 @@ def create_paragraphed_transcript(
         paragraphs.append({
             "index": len(paragraphs),
             "text": paragraph_text,
+            "words": words,
             "start": paragraph_start_time,
             "end": paragraph_end_time,
             "duration": round(duration, 3),
@@ -346,6 +354,6 @@ def create_paragraphed_transcript(
     
     return {
         "paragraphs": paragraphs,
-        "total_paragraphs": len(paragraphs)
+        "total_paragraphs": len(paragraphs),
     }
 

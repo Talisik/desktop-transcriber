@@ -64,10 +64,19 @@ class WhisperXTranscriber(TranscriberBase):
             device = getattr(self, 'device', "cuda" if torch.cuda.is_available() else "cpu")
         
         print(f"downloading diarization model")
-        self.diarization_model = DiarizationPipeline(
-            token=hf_token, 
-            device=device,
-        )
+        # Handle both newer (token) and older (use_auth_token) whisperx versions
+        try:
+            # Try token first (newer versions)
+            self.diarization_model = DiarizationPipeline(
+                token=hf_token, 
+                device=device,
+            )
+        except TypeError:
+            # Fall back to use_auth_token for older versions
+            self.diarization_model = DiarizationPipeline(
+                use_auth_token=hf_token, 
+                device=device,
+            )
         print(f"diarization model downloaded")
 
     def __lazy_download_alignment_model(
