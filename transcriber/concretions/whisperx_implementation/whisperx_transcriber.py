@@ -65,7 +65,7 @@ class WhisperXTranscriber(TranscriberBase):
         
         print(f"downloading diarization model")
         self.diarization_model = DiarizationPipeline(
-            use_auth_token=hf_token, 
+            token=hf_token, 
             device=device,
         )
         print(f"diarization model downloaded")
