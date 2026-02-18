@@ -47,7 +47,7 @@ def download_transcription_model(
         compute_type=compute_type,
         download_root=download_root
     )
-    print(f"✓ whisper model downloaded")
+    print(f"whisper model downloaded")
     del model
     
 
@@ -68,7 +68,7 @@ def download_diarization_model(
         use_auth_token=hf_token, 
         device=device,
     )
-    print(f"✓ diarization model downloaded")
+    print(f"diarization model downloaded")
     # Do not delete or free memory before returning the model instance
     return diarize_model
 

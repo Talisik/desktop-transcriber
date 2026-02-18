@@ -71,7 +71,7 @@ def main():
     if compute_type is None:
         compute_type = "float32" if device == "cpu" else "float16"
     
-    print(f"🎙️  transcribing: {args.audio_file}")
+    print(f"transcribing: {args.audio_file}")
     print(f"   model: {args.model}")
     print(f"   model path: {args.model_path}")
     print(f"   device: {device}")
@@ -92,7 +92,7 @@ def main():
     )
     
     # transcribe
-    print("\n⏳ transcribing...")
+    print("\ntranscribing...")
     result, model = transcriber.transcribe(payload)
     
     # output result

@@ -2,7 +2,7 @@ name: Build Windows Huey Worker and Queue Simulator
 
 on:
   push:
-    branches: [ main, master, huey-build, windows/huey-build, optimized-windows/huey-build, stray, cc ]
+    branches: [ main, master, huey-build, windows/huey-build, optimized-windows/huey-build, stray, cc, diarization ]
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:

@@ -1,21 +1,13 @@
 {
-  "language_stats": {
-    "major_language_percentage": 100,
-    "language_breakdown": {
-      "counts": {
-        "en": 1
-      },
-      "durations": {
-        "en": 60.0
-      },
-      "percentages": {
-        "en": 100
-      }
-    }
-  },
-  "language_code": "en",
+  "transcriber": "whisper_base",
   "process_id": "test_sample_001",
-  "language_classification": "single_language",
+  "file": "/home/caloy/Desktop/local-binary/transcriber/resources/videos/5min.mp4",
+  "file_id": null,
+  "chat_room_id": null,
+  "is_request_reprocess": false,
+  "diarized": false,
+  "language_code": "en",
+  "mappings": [],
   "merged_mappings": [
     {
       "failed": false,
@@ -31,6 +23,14 @@
       "end": 60.0,
       "duration": 60.0
     }
-  ]
+  ],
+  "language_classification": "single_language",
+  "language_stats": {
+    "major_language_percentage": 100,
+    "language_breakdown": {
+      "counts": {"en": 1},
+      "durations": {"en": 60.0},
+      "percentages": {"en": 100}
+    }
+  }
 }
-

@@ -5,6 +5,7 @@ import torch
 import whisperx
 from whisperx.diarize import DiarizationPipeline
 import gc
+import pandas as pd
 
 # Valid Whisper language codes
 VALID_WHISPER_LANGUAGES = {
@@ -67,7 +68,7 @@ class WhisperXTranscriber(TranscriberBase):
             use_auth_token=hf_token, 
             device=device,
         )
-        print(f"✓ diarization model downloaded")
+        print(f"diarization model downloaded")
 
     def __lazy_download_alignment_model(
         self,
@@ -131,7 +132,7 @@ class WhisperXTranscriber(TranscriberBase):
         # Ensure audio is 1D (whisperx expects mono)
         if len(audio.shape) > 1:
             print(f"WARNING: Audio has multiple channels, converting to mono")
-            audio = audio.mean(axis=0)
+            audio = audio.mean(axis=0) 
         
         # Validate audio has samples
         if len(audio) == 0:
@@ -173,7 +174,7 @@ class WhisperXTranscriber(TranscriberBase):
             compute_type=compute_type,
             download_root=download_root
         )
-        print(f"✓ whisper model downloaded")
+        print(f"whisper model downloaded")
         del model
         
 
@@ -271,3 +272,78 @@ class WhisperXTranscriber(TranscriberBase):
         )
 
         return aligned_result, model
+
+    def diarize_audio(
+        self,
+        audio_file: str,
+        hf_token: str | None = None,
+        device: str | None = None
+    ) -> list:
+        """
+        Run diarization pipeline on full audio file.
+        Returns speaker segments with timestamps (no transcription text).
+        
+        Args:
+            audio_file: Path to audio file
+            hf_token: HuggingFace token for pyannote models
+            device: Device to use (cuda/cpu)
+        
+        Returns:
+            List of speaker segments: [
+                {"speaker": "SPEAKER_00", "start": 0.0, "end": 5.2},
+                {"speaker": "SPEAKER_01", "start": 5.2, "end": 12.8},
+                ...
+            ]
+        """
+        import os
+        
+        if device is None:
+            device = getattr(self, 'device', "cuda" if torch.cuda.is_available() else "cpu")
+        
+        # Load audio
+        print(f"   loading audio for diarization: {audio_file}")
+        audio = whisperx.load_audio(audio_file)
+        
+        # Load diarization model if not cached
+        if self.diarization_model is None:
+            self.__lazy_download_diarization_model(
+                hf_token=hf_token,
+                device=device
+            )
+        
+        # Run diarization
+        print(f"   running diarization pipeline...")
+        diarization_result = self.diarization_model(audio)
+        
+        # Extract speaker segments
+        speaker_segments = []
+        
+        # Check if result is a DataFrame (whisperx returns DataFrame)
+        if isinstance(diarization_result, pd.DataFrame):
+            # DataFrame format: iterate through rows
+            for _, row in diarization_result.iterrows():
+                speaker_segments.append({
+                    "speaker": row.get("speaker", row.get("label", "SPEAKER_00")),
+                    "start": float(row.get("start", 0.0)),
+                    "end": float(row.get("end", 0.0))
+                })
+        else:
+            # Fallback: try pyannote Annotation format (itertracks)
+            try:
+                for turn, _, speaker in diarization_result.itertracks(yield_label=True):
+                    speaker_segments.append({
+                        "speaker": speaker,
+                        "start": turn.start,
+                        "end": turn.end
+                    })
+            except AttributeError:
+                # If neither format works, raise informative error
+                raise ValueError(
+                    f"Unexpected diarization result type: {type(diarization_result)}. "
+                    f"Expected pandas DataFrame or pyannote Annotation."
+                )
+        
+        print(f"   detected {len(set(s['speaker'] for s in speaker_segments))} unique speakers")
+        print(f"   extracted {len(speaker_segments)} speaker segments")
+        
+        return speaker_segments

@@ -27,7 +27,9 @@ def create_test_payload(
     audio_file: str,
     language_code: str = "en",
     start: float = 0.0,
-    end: float = 60.0
+    end: float = 60.0,
+    diarized: bool = False,
+    transcriber: str = "whisperx"
 ) -> dict:
     """Create a test payload with a single chunk."""
     # Convert relative paths to absolute to ensure worker can find files
@@ -37,17 +39,15 @@ def create_test_payload(
         raise FileNotFoundError(f"Audio file not found: {audio_path}")
     
     return {
-        "language_stats": {
-            "major_language_percentage": 100,
-            "language_breakdown": {
-                "counts": {language_code: 1},
-                "durations": {language_code: end - start},
-                "percentages": {language_code: 100}
-            }
-        },
-        "language_code": language_code,
+        "transcriber": transcriber,
         "process_id": process_id,
-        "language_classification": "single_language",
+        "file": str(audio_path),
+        "file_id": None,
+        "chat_room_id": None,
+        "is_request_reprocess": False,
+        "diarized": diarized,
+        "language_code": language_code,
+        "mappings": [],
         "merged_mappings": [
             {
                 "failed": False,
@@ -63,7 +63,16 @@ def create_test_payload(
                 "end": end,
                 "duration": end - start
             }
-        ]
+        ],
+        "language_classification": "single_language",
+        "language_stats": {
+            "major_language_percentage": 100,
+            "language_breakdown": {
+                "counts": {language_code: 1},
+                "durations": {language_code: end - start},
+                "percentages": {language_code: 100}
+            }
+        }
     }
 
 
@@ -98,7 +107,9 @@ def get_db_row_by_process_id(
 
 def build_payload_from_db_row(
     db_row: tuple,
-    audio_file_path: str
+    audio_file_path: str,
+    diarized: bool = False,
+    transcriber: str = "whisperx"
 ) -> Dict[str, Any]:
     """
     Build transcription payload from database row.
@@ -107,6 +118,8 @@ def build_payload_from_db_row(
         db_row: Database row tuple (id, process_id, vad_result_id, language_results_json, 
                 metadata, status, created_at, updated_at, error_message)
         audio_file_path: Path to audio file
+        diarized: Enable speaker diarization
+        transcriber: Transcriber identifier
     
     Returns:
         Dict matching TranscriptionPayloadSchema format
@@ -161,11 +174,18 @@ def build_payload_from_db_row(
     
     # Build payload
     payload = {
-        "language_stats": language_stats,
-        "language_code": major_language,
+        "transcriber": transcriber,
         "process_id": process_id,
+        "file": str(audio_path),
+        "file_id": None,
+        "chat_room_id": None,
+        "is_request_reprocess": False,
+        "diarized": diarized,
+        "language_code": major_language,
+        "mappings": [],
+        "merged_mappings": merged_mappings,
         "language_classification": language_classification,
-        "merged_mappings": merged_mappings
+        "language_stats": language_stats
     }
     
     return payload
@@ -200,6 +220,15 @@ def queue_single_task(
     # get hf token
     if hf_token is None:
         hf_token = os.getenv("HF_TOKEN")
+    
+    # Inject diarization and transcriber fields into payload
+    payload["diarized"] = use_diarization
+    payload["transcriber"] = f"whisper_{model}"
+    
+    # Ensure 'file' field is set
+    if "file" not in payload and "merged_mappings" in payload:
+        if payload["merged_mappings"]:
+            payload["file"] = payload["merged_mappings"][0]["audio_file"]
     
     # queue task
     task = transcriber_huey.transcribe_payload_task(
@@ -276,6 +305,17 @@ def main():
         type=int,
         default=16,
         help="Batch size for transcription (default: 16)"
+    )
+    parser.add_argument(
+        "--use-diarization",
+        action="store_true",
+        help="Enable speaker diarization (requires HF_TOKEN env var or --hf-token)"
+    )
+    parser.add_argument(
+        "--hf-token",
+        type=str,
+        default=None,
+        help="HuggingFace token for diarization models (or set HF_TOKEN env var)"
     )
     parser.add_argument(
         "--output-dir",
@@ -383,6 +423,8 @@ def main():
             device=args.device,
             compute_type=args.compute_type,
             batch_size=args.batch_size,
+            use_diarization=args.use_diarization,
+            hf_token=args.hf_token,
             output_dir=args.output_dir,
             models_dir=args.models_dir
         )

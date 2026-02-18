@@ -105,7 +105,9 @@ def map_chunks_to_merged_mappings(
 
 def create_payload_from_db_row(
     db_row: tuple,
-    audio_file_path: str
+    audio_file_path: str,
+    diarized: bool = False,
+    transcriber: str = "whisperx"
 ) -> Dict[str, Any]:
     """
     Create transcription payload from database row.
@@ -114,6 +116,8 @@ def create_payload_from_db_row(
         db_row: Database row tuple (id, process_id, vad_result_id, language_results_json, 
                 metadata, status, created_at, updated_at, error_message)
         audio_file_path: Path to audio file
+        diarized: Enable speaker diarization
+        transcriber: Transcriber identifier
     
     Returns:
         Dict matching TranscriptionPayloadSchema format
@@ -151,13 +155,23 @@ def create_payload_from_db_row(
     # Map chunks to merged_mappings
     merged_mappings = map_chunks_to_merged_mappings(language_chunks, audio_file_path)
     
+    # Resolve audio path
+    audio_path = Path(audio_file_path).resolve()
+    
     # Build payload
     payload = {
-        "language_stats": language_stats,
-        "language_code": major_language,
+        "transcriber": transcriber,
         "process_id": process_id,
+        "file": str(audio_path),
+        "file_id": None,
+        "chat_room_id": None,
+        "is_request_reprocess": False,
+        "diarized": diarized,
+        "language_code": major_language,
+        "mappings": [],
+        "merged_mappings": merged_mappings,
         "language_classification": language_classification,
-        "merged_mappings": merged_mappings
+        "language_stats": language_stats
     }
     
     return payload

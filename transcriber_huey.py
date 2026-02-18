@@ -10,7 +10,7 @@ from huey import SqliteHuey
 from pydantic import BaseModel
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from pathlib import Path
 import traceback
 import shutil
@@ -115,11 +115,18 @@ class MergedMappingSchema(BaseModel):
 
 
 class TranscriptionPayloadSchema(BaseModel):
-    language_stats: dict
-    language_code: str
+    transcriber: str  # e.g., "whisper_turbo", "whisper_base"
     process_id: str
-    language_classification: str
+    file: str  # main audio file path (for diarization)
+    file_id: Optional[str] = None
+    chat_room_id: Optional[str] = None
+    is_request_reprocess: Optional[bool] = False
+    diarized: Optional[bool] = False  # NEW: speaker diarization flag
+    language_code: Optional[str] = None
+    mappings: Optional[list] = []
     merged_mappings: list[MergedMappingSchema]
+    language_classification: Optional[str] = None
+    language_stats: Optional[dict] = None
 
 
 def _inject_ffmpeg_to_path(ffmpeg_exe_path: str):
@@ -337,6 +344,72 @@ def extract_audio_segment(
             f"ffmpeg failed to extract audio segment: {e.stderr}")
     except FileNotFoundError:
         raise RuntimeError("ffmpeg not found. Please install ffmpeg.")
+
+
+def overlay_speaker_labels_on_segments(
+    diarization_segments: list,
+    transcribed_segments: list
+) -> list:
+    """
+    Overlay speaker labels onto transcribed segments using two-pointer algorithm.
+    
+    Args:
+        diarization_segments: [{"speaker": "SPEAKER_00", "start": 0.0, "end": 5.2}, ...]
+        transcribed_segments: [{"start": 0.0, "end": 3.2, "text": "...", "words": [...]}, ...]
+    
+    Returns:
+        Updated segments with speaker labels added to words and segments
+    """
+    if not diarization_segments:
+        return transcribed_segments
+    
+    # Sort both lists by start time
+    diarization_segments = sorted(diarization_segments, key=lambda x: x["start"])
+    
+    def find_speaker_for_timestamp(timestamp: float, speaker_idx: int = 0) -> tuple:
+        """Find speaker segment that overlaps with timestamp. Returns (speaker, new_index)."""
+        for i in range(speaker_idx, len(diarization_segments)):
+            seg = diarization_segments[i]
+            if seg["start"] <= timestamp <= seg["end"]:
+                return seg["speaker"], i
+            elif timestamp < seg["start"]:
+                # timestamp before this segment, no match
+                return None, i
+        return None, speaker_idx
+    
+    # Two-pointer algorithm: match words with speaker segments
+    speaker_idx = 0
+    
+    for segment in transcribed_segments:
+        word_speakers = []
+        
+        # Assign speaker to each word
+        if "words" in segment:
+            for word in segment["words"]:
+                word_start = word.get("start", segment["start"])
+                word_end = word.get("end", segment["end"])
+                word_mid = (word_start + word_end) / 2
+                
+                # Find speaker at word midpoint
+                speaker, speaker_idx = find_speaker_for_timestamp(word_mid, speaker_idx)
+                
+                if speaker:
+                    word["speaker"] = speaker
+                    word_speakers.append(speaker)
+        
+        # Assign segment-level speaker (majority vote from words)
+        if word_speakers:
+            from collections import Counter
+            most_common_speaker = Counter(word_speakers).most_common(1)[0][0]
+            segment["speaker"] = most_common_speaker
+        else:
+            # Fallback: use segment midpoint
+            segment_mid = (segment["start"] + segment["end"]) / 2
+            speaker, speaker_idx = find_speaker_for_timestamp(segment_mid, speaker_idx)
+            if speaker:
+                segment["speaker"] = speaker
+    
+    return transcribed_segments
 
 
 def _process_single_chunk(
@@ -591,6 +664,41 @@ def _transcribe_payload_task_impl(
     print(f"\nmerging results:")
     print(f"   total segments: {len(all_segments)}")
 
+    # Check if diarization is enabled
+    diarized = payload_schema.diarized or False
+    num_speakers = 0
+
+    if diarized:
+        print(f"\nrunning speaker diarization:")
+        print(f"   audio file: {payload_schema.file}")
+        
+        try:
+            # PHASE 2: Run diarization on full audio
+            transcriber = WhisperXTranscriber(device=device)
+            diarization_segments = transcriber.diarize_audio(
+                audio_file=payload_schema.file,
+                hf_token=hf_token,
+                device=device
+            )
+            
+            num_speakers = len(set(s["speaker"] for s in diarization_segments))
+            print(f"   unique speakers: {num_speakers}")
+            print(f"   speaker segments: {len(diarization_segments)}")
+            
+            # PHASE 3: Overlay speaker labels onto transcribed segments
+            print(f"   overlaying speaker labels...")
+            all_segments = overlay_speaker_labels_on_segments(
+                diarization_segments=diarization_segments,
+                transcribed_segments=all_segments
+            )
+            
+            print(f"   speaker labels added to {len(all_segments)} segments")
+            
+        except Exception as e:
+            print(f"   WARNING: diarization failed: {e}")
+            print(f"   continuing without speaker labels")
+            diarized = False
+
     # build transcript output
     machine_name = os.getenv("MACHINE_NAME", "unknown")
     # placeholder, can be extracted from process_id if needed
@@ -604,6 +712,11 @@ def _transcribe_payload_task_impl(
         "language": payload_schema.language_code,
         "segments": all_segments
     }
+
+    # Add diarization metadata if enabled
+    if diarized:
+        transcript_data["diarized"] = True
+        transcript_data["num_speakers"] = num_speakers
 
     # save transcript
     output_path = Path(output_dir)
@@ -643,6 +756,10 @@ def _transcribe_payload_task_impl(
         "cc_segments": cc_result["cc_segments"],
         "total_segments": cc_result["total_segments"]
     }
+    
+    if diarized:
+        cc_transcript_data["diarized"] = True
+        cc_transcript_data["num_speakers"] = num_speakers
     
     # save CC transcript
     cc_filename = f"{process_id}_cc_transcript.json"
@@ -704,6 +821,10 @@ def _transcribe_payload_task_impl(
         "paragraphs": paragraph_result["paragraphs"],
         "total_paragraphs": paragraph_result["total_paragraphs"]
     }
+    
+    if diarized:
+        paragraph_transcript_data["diarized"] = True
+        paragraph_transcript_data["num_speakers"] = num_speakers
     
     # save paragraphed transcript
     paragraph_filename = f"{process_id}_paragraph_transcript.json"
@@ -853,7 +974,7 @@ def main():
     )
 
     if args.wait:
-        print(f"⏳ waiting for task to complete...")
+        print(f"waiting for task to complete...")
         result = task.get(blocking=True, timeout=3600)  # 1 hour timeout
         print(f"task completed")
         print(f"result: {result}")
