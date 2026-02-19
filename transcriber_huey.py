@@ -737,12 +737,13 @@ def _transcribe_payload_task_impl(
     cpl = int(os.getenv("CC_CPL", "40"))
     print(f"   characters per line (CPL): {cpl}")
     
-    # convert segments to CC format
+    # convert segments to CC format (include speaker if diarized)
     cc_result = convert_to_cc(
         segments=all_segments,
         cpl=cpl,
         segment_start_index=0,
-        offset=0.0  # no offset needed since timestamps are already absolute
+        offset=0.0,  # no offset needed since timestamps are already absolute
+        include_speaker=diarized  # include speaker info if diarization was used
     )
     
     # build CC transcript data
@@ -774,8 +775,8 @@ def _transcribe_payload_task_impl(
     # generate subtitle files (SRT & VTT)
     print(f"\ngenerating subtitle files:")
     
-    # SRT format
-    srt_content = cc_to_srt(cc_result["cc_segments"])
+    # SRT format (include speaker if diarized)
+    srt_content = cc_to_srt(cc_result["cc_segments"], include_speaker=diarized)
     srt_filename = f"{process_id}.srt"
     srt_filepath = output_path / srt_filename
     
@@ -784,8 +785,8 @@ def _transcribe_payload_task_impl(
     
     print(f"   SRT subtitle saved: {srt_filepath}")
     
-    # VTT format
-    vtt_content = cc_to_vtt(cc_result["cc_segments"])
+    # VTT format (include speaker if diarized)
+    vtt_content = cc_to_vtt(cc_result["cc_segments"], include_speaker=diarized)
     vtt_filename = f"{process_id}.vtt"
     vtt_filepath = output_path / vtt_filename
     
@@ -802,11 +803,12 @@ def _transcribe_payload_task_impl(
     max_duration = float(os.getenv("PARAGRAPH_MAX_DURATION", "35.0"))
     print(f"   target duration: {target_duration}s (max: {max_duration}s)")
     
-    # create paragraphed transcript
+    # create paragraphed transcript (include speaker if diarized)
     paragraph_result = create_paragraphed_transcript(
         cc_segments=cc_result["cc_segments"],
         target_duration=target_duration,
-        max_duration=max_duration
+        max_duration=max_duration,
+        include_speaker=diarized  # include speaker info if diarization was used
     )
     
     # build paragraphed transcript data
