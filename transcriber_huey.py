@@ -418,7 +418,8 @@ def _process_single_chunk(
     download_root: str,
     device: str,
     compute_type: str,
-    batch_size: int
+    batch_size: int,
+    model_path: str | None = None
 ) -> tuple:
     """
     Process a single chunk in a worker thread.
@@ -482,7 +483,8 @@ def _process_single_chunk(
             device=device,
             compute_type=compute_type,
             batch_size=batch_size,
-            language=chunk.language_code
+            language=chunk.language_code,
+            model_path=model_path
         )
 
         # Transcribe
@@ -564,7 +566,8 @@ def _transcribe_payload_task_impl(
     batch_size: int,
     use_diarization: bool,
     hf_token: str | None,
-    output_dir: str
+    output_dir: str,
+    model_path: str | None = None
 ) -> str:
     """
     Transcribe payload with audio chunks (parallel processing).
@@ -579,6 +582,7 @@ def _transcribe_payload_task_impl(
     process_id = payload_schema.process_id
     print(f"   process_id: {process_id}")
     print(f"   chunks: {len(payload_schema.merged_mappings)}")
+    print(f"   device: {device}")
 
     # Log audio file path(s) from payload
     audio_files = []
@@ -631,7 +635,8 @@ def _transcribe_payload_task_impl(
                 download_root,
                 device,
                 compute_type,
-                batch_size
+                batch_size,
+                model_path
             ): chunk_data[0]  # chunk_idx
             for chunk_data in chunk_data_list
         }
@@ -915,6 +920,12 @@ def main():
         help="directory for model files (default: resources/models)"
     )
     parser.add_argument(
+        "--model-path",
+        type=str,
+        default=None,
+        help="Path to directory containing existing models (fallback when model not found in models-dir)"
+    )
+    parser.add_argument(
         "--wait",
         action="store_true",
         help="wait for task to complete (blocking)"
@@ -972,7 +983,8 @@ def main():
         batch_size=args.batch_size,
         use_diarization=args.use_diarization,
         hf_token=hf_token,
-        output_dir=args.output_dir
+        output_dir=args.output_dir,
+        model_path=args.model_path
     )
 
     if args.wait:

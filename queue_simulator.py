@@ -200,7 +200,8 @@ def queue_single_task(
     use_diarization: bool = False,
     hf_token: str = None,
     output_dir: str = "output",
-    models_dir: str = None
+    models_dir: str = None,
+    model_path: str = None
 ) -> str:
     """Queue a single transcription task."""
     import torch
@@ -208,6 +209,14 @@ def queue_single_task(
     # auto-detect device if not provided
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "cpu"
+    
+    # Warn if CUDA requested but not available
+    if device == "cuda" and not torch.cuda.is_available():
+        print(f"WARNING: CUDA requested but not available. PyTorch reports CUDA unavailable.")
+        print(f"   PyTorch version: {torch.__version__}")
+        print(f"   CUDA compiled: {torch.version.cuda}")
+        print(f"   Falling back to CPU. Check nvidia drivers and GPU availability.")
+        device = "cpu"
     
     # auto-detect compute_type if not provided
     if compute_type is None:
@@ -240,7 +249,8 @@ def queue_single_task(
         batch_size=batch_size,
         use_diarization=use_diarization,
         hf_token=hf_token,
-        output_dir=output_dir
+        output_dir=output_dir,
+        model_path=model_path
     )
     
     return task.id
@@ -328,6 +338,12 @@ def main():
         type=str,
         default=None,
         help="Directory for model files (default: resources/models)"
+    )
+    parser.add_argument(
+        "--model-path",
+        type=str,
+        default=None,
+        help="Path to directory containing existing models (fallback when model not found in models-dir)"
     )
     parser.add_argument(
         "--delay",
@@ -426,7 +442,8 @@ def main():
             use_diarization=args.use_diarization,
             hf_token=args.hf_token,
             output_dir=args.output_dir,
-            models_dir=args.models_dir
+            models_dir=args.models_dir,
+            model_path=args.model_path
         )
         
         task_ids.append(task_id)

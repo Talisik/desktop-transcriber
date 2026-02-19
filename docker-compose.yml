@@ -5,13 +5,15 @@ services:
     runtime: nvidia
     network_mode: host
     volumes:
-      - ./resources:/app/resources
+      - ./resources:/app/resources  # Includes models directory for persistence
       - ./benchmark_results:/app/benchmark_results
+      - ./output:/app/output  # Output directory for transcripts
     environment:
       - PYTHONUNBUFFERED=1
       - NVIDIA_VISIBLE_DEVICES=0
       - DOCKER_CPU_LIMIT=16
       - DOCKER_MEMORY_LIMIT=32G
+      - MODELS_DIR=/app/resources/models  # Explicit models directory
     deploy:
       resources:
         limits:

@@ -53,6 +53,7 @@ class WhisperXTranscriber(TranscriberBase):
             device = "cuda" if torch.cuda.is_available() else "cpu"
         
         self.device = device
+        print(f"   using device: {device}")
 
     def __lazy_download_diarization_model(
         self,
@@ -63,7 +64,11 @@ class WhisperXTranscriber(TranscriberBase):
         if device is None:
             device = getattr(self, 'device', "cuda" if torch.cuda.is_available() else "cpu")
         
-        print(f"downloading diarization model")
+        # Check if model is already loaded
+        if self.diarization_model is not None:
+            return
+        
+        print(f"loading diarization model")
         # Handle both newer (token) and older (use_auth_token) whisperx versions
         try:
             # Try token first (newer versions)
@@ -77,7 +82,7 @@ class WhisperXTranscriber(TranscriberBase):
                 use_auth_token=hf_token, 
                 device=device,
             )
-        print(f"diarization model downloaded")
+        print(f"diarization model loaded")
 
     def __lazy_download_alignment_model(
         self,
@@ -202,13 +207,32 @@ class WhisperXTranscriber(TranscriberBase):
         device: Device = Device.cuda,
         compute_type: ComputeType = ComputeType.float16,
         batch_size: int = 16,
-        language: str | None = None
+        language: str | None = None,
+        model_path: str | None = None
     ):
+        # Determine which download_root to use
+        # model_path is a parent directory containing all models (like download_root)
+        # Try model_path first if provided, then fall back to download_root
+        effective_download_root = download_root
+        
+        if model_path:
+            from pathlib import Path
+            
+            model_path_obj = Path(model_path)
+            if model_path_obj.exists() and model_path_obj.is_dir():
+                # Use model_path as the download root (parent directory containing all models)
+                effective_download_root = str(model_path_obj)
+            elif model_path_obj.exists() and model_path_obj.is_file():
+                # If a file is provided, use its parent directory
+                effective_download_root = str(model_path_obj.parent)
+        
+        # Try to load model with effective_download_root
+        # If it fails, whisperx will download it automatically
         model = whisperx.load_model(
             whisper_model, 
             device, 
             compute_type=compute_type,
-            download_root=download_root
+            download_root=effective_download_root
         )
         # Pass language to skip detection
         # Note: vad_filter is not a valid parameter for model.transcribe()
@@ -260,7 +284,8 @@ class WhisperXTranscriber(TranscriberBase):
             device=Device(payload.device),
             compute_type=ComputeType(payload.compute_type),
             batch_size=payload.batch_size,
-            language=payload.language  # Pass language to skip detection
+            language=payload.language,  # Pass language to skip detection
+            model_path=payload.model_path  # Pass model_path as fallback
         )
 
         if self.alignment_model is None:
@@ -313,8 +338,10 @@ class WhisperXTranscriber(TranscriberBase):
         print(f"   loading audio for diarization: {audio_file}")
         audio = whisperx.load_audio(audio_file)
         
-        # Load diarization model if not cached
+        # Load diarization model if not already loaded in this instance
+        # Note: Model files are cached by HuggingFace, so this just loads from cache
         if self.diarization_model is None:
+            print(f"   loading diarization model on {device}")
             self.__lazy_download_diarization_model(
                 hf_token=hf_token,
                 device=device

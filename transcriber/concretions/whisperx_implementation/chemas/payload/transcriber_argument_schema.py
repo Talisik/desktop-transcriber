@@ -8,3 +8,4 @@ class WhisperXTranscriberArgumentSchema(BaseModel):
     compute_type: str
     batch_size: int
     language: str | None = None  # language code to skip detection
+    model_path: str | None = None  # fallback model path (file or directory)
