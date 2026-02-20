@@ -1,5 +1,28 @@
 # Executables Command Reference
 
+## GPU Support
+
+The Windows executables include CUDA-enabled PyTorch, enabling GPU acceleration for:
+- **Transcription**: Uses CTranslate2 (works independently of PyTorch CUDA status)
+- **Alignment**: Uses PyTorch (requires CUDA-enabled PyTorch - included in build)
+- **Diarization**: Uses PyTorch/pyannote (requires CUDA-enabled PyTorch - included in build)
+
+### Executable Size
+- Executables are **~200-300MB larger** due to CUDA-enabled PyTorch libraries
+- Total size: ~1GB+ (includes all ML dependencies)
+
+### GPU Requirements
+- **NVIDIA GPU** with CUDA drivers installed
+- Use `ResourceTracker.exe` to detect GPU availability
+- Pass `--device cuda` to `queue_simulator.exe` when GPU is available
+
+### Device Detection Workflow
+```
+1. Run ResourceTracker.exe to detect GPU
+2. If GPU detected, use: queue_simulator.exe --device cuda ...
+3. If no GPU, use: queue_simulator.exe --device cpu ... (or omit --device, defaults to cpu)
+```
+
 ## huey_worker.exe
 
 # Basic usage (auto-detect ffmpeg)
@@ -93,7 +116,7 @@ queue_simulator.exe --process-id "process_123" --audio-file "C:\audio\video.mp4"
 - `--db-path` - Database file path (default: `salina_vad.db`)
 - `--count` - Number of tasks to queue (default: `1`)
 - `--model` - Whisper model (default: `turbo`)
-- `--device` - Device: `cuda` or `cpu` (auto-detect if not specified)
+- `--device` - Device: `cuda` or `cpu` (default: `cpu` if not specified, use ResourceTracker.exe to detect GPU)
 - `--compute-type` - `float16`, `float32`, or `int8` (auto-detect if not specified)
 - `--batch-size` - Batch size (default: `16`)
 - `--output-dir` - Output directory (default: `output`)

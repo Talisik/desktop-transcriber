@@ -48,9 +48,13 @@ class WhisperXTranscriber(TranscriberBase):
         self.alignment_model = None
         self.diarization_model = None
         
-        # auto-detect device if not provided
+        # Default to CPU if device not provided (device should come from payload)
         if device is None:
-            device = "cuda" if torch.cuda.is_available() else "cpu"
+            device = "cpu"
+        
+        # Validate device parameter
+        if device not in ["cuda", "cpu"]:
+            raise ValueError(f"Invalid device: {device}. Must be 'cuda' or 'cpu'")
         
         self.device = device
         print(f"   using device: {device}")
@@ -62,7 +66,7 @@ class WhisperXTranscriber(TranscriberBase):
         download_root: str | None = None
     ):
         if device is None:
-            device = getattr(self, 'device', "cuda" if torch.cuda.is_available() else "cpu")
+            device = getattr(self, 'device', "cpu")
         
         # Check if model is already loaded
         if self.diarization_model is not None:
@@ -90,7 +94,7 @@ class WhisperXTranscriber(TranscriberBase):
         device: str | None = None
     ):
         if device is None:
-            device = getattr(self, 'device', "cuda" if torch.cuda.is_available() else "cpu")
+            device = getattr(self, 'device', "cpu")
         
         # Try to load alignment model for requested language
         # Fall back to English if language not supported
@@ -176,7 +180,7 @@ class WhisperXTranscriber(TranscriberBase):
         """
         
         if device is None:
-            device = getattr(self, 'device', "cuda" if torch.cuda.is_available() else "cpu")
+            device = getattr(self, 'device', "cpu")
 
         if compute_type is None:
             compute_type = "float32" if device == "cpu" else "float16"
@@ -332,7 +336,7 @@ class WhisperXTranscriber(TranscriberBase):
         import os
         
         if device is None:
-            device = getattr(self, 'device', "cuda" if torch.cuda.is_available() else "cpu")
+            device = getattr(self, 'device', "cpu")
         
         # Load audio
         print(f"   loading audio for diarization: {audio_file}")
