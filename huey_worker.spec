@@ -24,6 +24,27 @@ pyannote_submodules = collect_submodules('pyannote')
 huey_datas = collect_data_files('huey')
 huey_submodules = collect_submodules('huey')
 
+# filter out nvidia CUDA binaries - these should be loaded from system, not bundled
+def filter_cuda_binaries(binaries_list):
+    """Filter out nvidia CUDA library binaries to avoid extraction errors."""
+    filtered = []
+    for binary in binaries_list:
+        # binary is a tuple: (source_path, dest_path, ...)
+        # exclude any binaries with nvidia/ in the path
+        if len(binary) >= 2:
+            source_path = binary[0]
+            dest_path = binary[1]
+            # skip nvidia CUDA libraries
+            if 'nvidia/' not in str(source_path) and 'nvidia/' not in str(dest_path):
+                filtered.append(binary)
+        else:
+            filtered.append(binary)
+    return filtered
+
+# filter CUDA binaries from collected binaries
+all_binaries = speechbrain_binaries + pyannote_binaries
+filtered_binaries = filter_cuda_binaries(all_binaries)
+
 # hidden imports for ML libs + huey
 hiddenimports = [
     'whisperx',
@@ -86,7 +107,7 @@ hiddenimports = [
 a = Analysis(
     ['huey_worker.py'],
     pathex=[],
-    binaries=speechbrain_binaries + pyannote_binaries,
+    binaries=filtered_binaries,
     datas=whisperx_datas + faster_whisper_datas + lightning_fabric_datas + speechbrain_datas + pyannote_datas + huey_datas,
     hiddenimports=hiddenimports,
     hookspath=[],
@@ -110,7 +131,7 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    upx_exclude=[],
+    upx_exclude=['libcublas*.so*', 'libcudnn*.so*', 'libcufft*.so*', 'libcurand*.so*', 'libcusolver*.so*', 'libcusparse*.so*', '*nvidia*'],
     runtime_tmpdir=None,
     console=True,
     disable_windowed_traceback=False,
