@@ -209,6 +209,15 @@ def queue_single_task(
     # auto-detect device if not provided
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "cpu"
+    else:
+        # User explicitly set device - respect it even if PyTorch can't detect CUDA
+        # Let WhisperX handle the error if CUDA isn't actually available
+        if device == "cuda" and not torch.cuda.is_available():
+            print(f"WARNING: CUDA requested but PyTorch reports CUDA unavailable.")
+            print(f"   PyTorch version: {torch.__version__}")
+            print(f"   CUDA compiled: {torch.version.cuda if hasattr(torch.version, 'cuda') else 'N/A'}")
+            print(f"   Attempting to use CUDA anyway - WhisperX will handle errors if GPU unavailable.")
+            # Don't fall back - let the user's explicit choice stand
     
     # Warn if CUDA requested but not available
     if device == "cuda" and not torch.cuda.is_available():
