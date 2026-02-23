@@ -22,6 +22,9 @@ import sys
 import os
 import json
 import torch
+import secrets
+import sqlite3
+from collections import Counter
 
 # CRITICAL: monkey patch torch.load to disable weights_only before any other imports
 # pytorch 2.6 changed default to weights_only=True which breaks pyannote/whisperx models
@@ -412,6 +415,252 @@ def overlay_speaker_labels_on_segments(
     return transcribed_segments
 
 
+def build_face_recog_payload(
+    diarization_segments: list,
+    transcribed_segments: list,
+    process_id: str,
+    video_url: str,
+    language_code: str | None = None,
+    sample_rate: float = 1.0
+) -> dict:
+    """
+    Build face recognition payload from diarization results.
+    
+    For each diarization segment, finds the first matching word from transcribed segments
+    and uses that word's timestamp for frame extraction.
+    
+    Args:
+        diarization_segments: List of {"speaker": "SPEAKER_00", "start": float, "end": float}
+        transcribed_segments: List of segments with speaker labels and words
+        process_id: Process ID for the payload
+        video_url: Path to video/audio file
+        language_code: Default language code (fallback if not found in segments)
+        sample_rate: Sample rate for payload (default: 1.0)
+    
+    Returns:
+        Face recognition payload dict matching the schema
+    """
+    # Collect word timestamps per diarization segment
+    # Map: speaker_label -> list of {start_time, end_time}
+    speaker_timestamps: Dict[str, list] = {}
+    
+    # For each diarization segment, find first matching word
+    for diar_seg in diarization_segments:
+        speaker_label = diar_seg.get("speaker")
+        seg_start = diar_seg.get("start", 0.0)
+        seg_end = diar_seg.get("end", 0.0)
+        
+        if not speaker_label:
+            continue
+        
+        # Find first word that matches speaker and overlaps with segment
+        matching_word = None
+        for segment in transcribed_segments:
+            if "words" not in segment:
+                continue
+            
+            for word in segment.get("words", []):
+                word_speaker = word.get("speaker")
+                word_start = word.get("start", segment.get("start", 0.0))
+                word_end = word.get("end", segment.get("end", 0.0))
+                
+                # Check if speaker matches and timestamps overlap
+                if (word_speaker == speaker_label and 
+                    word_start <= seg_end and word_end >= seg_start):
+                    matching_word = {
+                        "start_time": word_start,
+                        "end_time": word_end
+                    }
+                    break
+            
+            if matching_word:
+                break
+        
+        # Add timestamp to speaker's collection
+        if matching_word:
+            if speaker_label not in speaker_timestamps:
+                speaker_timestamps[speaker_label] = []
+            speaker_timestamps[speaker_label].append(matching_word)
+    
+    # Build speakers_metadata array
+    speakers_metadata = []
+    
+    for speaker_label, timestamps in speaker_timestamps.items():
+        if not timestamps:
+            continue
+        
+        # Generate speaker_id (24-char hex, ObjectId format)
+        speaker_id = secrets.token_hex(12)
+        
+        # Extract language for this speaker from transcribed segments
+        speaker_language = None
+        speaker_language_iso = None
+        
+        # Find all segments/words with this speaker label
+        speaker_segments = []
+        for segment in transcribed_segments:
+            segment_speaker = segment.get("speaker")
+            if segment_speaker == speaker_label:
+                speaker_segments.append(segment)
+            
+            # Also check words
+            if "words" in segment:
+                for word in segment.get("words", []):
+                    if word.get("speaker") == speaker_label:
+                        speaker_segments.append(segment)
+                        break
+        
+        # Extract language from segments (majority vote)
+        if speaker_segments:
+            segment_languages = []
+            for seg in speaker_segments:
+                seg_lang = seg.get("language")
+                if seg_lang:
+                    segment_languages.append(seg_lang)
+            
+            if segment_languages:
+                # Majority vote
+                lang_counter = Counter(segment_languages)
+                speaker_language = lang_counter.most_common(1)[0][0]
+                # Map to ISO format (simple mapping for common languages)
+                lang_iso_map = {
+                    "en": "en-US",
+                    "es": "es-ES",
+                    "fr": "fr-FR",
+                    "de": "de-DE",
+                    "it": "it-IT",
+                    "pt": "pt-PT",
+                    "ja": "ja-JP",
+                    "zh": "zh-CN",
+                    "ko": "ko-KR"
+                }
+                speaker_language_iso = lang_iso_map.get(speaker_language, speaker_language)
+        
+        # Fallback to default language_code if no segment-level language
+        if not speaker_language and language_code:
+            speaker_language = language_code
+            # Map to ISO if possible
+            lang_iso_map = {
+                "en": "en-US",
+                "es": "es-ES",
+                "fr": "fr-FR",
+                "de": "de-DE",
+                "it": "it-IT",
+                "pt": "pt-PT",
+                "ja": "ja-JP",
+                "zh": "zh-CN",
+                "ko": "ko-KR"
+            }
+            speaker_language_iso = lang_iso_map.get(language_code, language_code)
+        
+        # Build speaker metadata object
+        speaker_metadata = {
+            "speaker_label": speaker_label,
+            "speaker_speech_timestamp": timestamps,
+            "speaker_id": speaker_id,
+            "language": speaker_language,
+            "language_iso": speaker_language_iso
+        }
+        
+        speakers_metadata.append(speaker_metadata)
+    
+    # Build options dict with defaults
+    options = {
+        "upload": False,
+        "save_local": True,
+        "generate_manifest": True,
+        "s3_base_path": None,
+        "crop_padding_percent": 50.0,
+        "crop_resize_width": 384,
+        "crop_resize_height": 256
+    }
+    
+    # Build complete payload
+    payload = {
+        "video_url": video_url,
+        "speakers_metadata": speakers_metadata,
+        "sample_rate": sample_rate,
+        "process_id": process_id,
+        "options": options
+    }
+    
+    return payload
+
+
+def insert_face_recog_payload(
+    process_id: str,
+    payload: dict,
+    db_path: str | None = None
+) -> bool:
+    """
+    Insert face recognition payload into SQLite database.
+    
+    Args:
+        process_id: Unique process ID
+        payload: Face recognition payload dict
+        db_path: Database path (default: from FACE_RECOG_DB_PATH env var or "face_recog_payloads.db")
+    
+    Returns:
+        True if successful, False otherwise
+    """
+    if db_path is None:
+        db_path = os.getenv("FACE_RECOG_DB_PATH", "face_recog_payloads.db")
+    
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        # Create table if not exists
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS face_recog_payloads (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                process_id TEXT UNIQUE NOT NULL,
+                payload_json TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                error_message TEXT
+            )
+        """)
+        
+        # Create indexes
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_process_id ON face_recog_payloads(process_id)
+        """)
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_status ON face_recog_payloads(status)
+        """)
+        
+        # Convert payload to JSON string
+        payload_json = json.dumps(payload)
+        
+        # Insert or update
+        try:
+            cursor.execute("""
+                INSERT INTO face_recog_payloads (process_id, payload_json, status)
+                VALUES (?, ?, 'pending')
+            """, (process_id, payload_json))
+            conn.commit()
+            print(f"   face recognition payload inserted: process_id={process_id}")
+        except sqlite3.IntegrityError:
+            # Update if process_id already exists
+            cursor.execute("""
+                UPDATE face_recog_payloads
+                SET payload_json = ?, status = 'pending', updated_at = CURRENT_TIMESTAMP
+                WHERE process_id = ?
+            """, (payload_json, process_id))
+            conn.commit()
+            print(f"   face recognition payload updated: process_id={process_id}")
+        
+        conn.close()
+        return True
+        
+    except Exception as e:
+        print(f"   WARNING: failed to insert face recognition payload: {e}")
+        traceback.print_exc()
+        return False
+
+
 def _process_single_chunk(
     chunk_data: tuple,
     whisper_model: str,
@@ -698,6 +947,36 @@ def _transcribe_payload_task_impl(
             )
             
             print(f"   speaker labels added to {len(all_segments)} segments")
+            
+            # Build and insert face recognition payload
+            try:
+                print(f"\nbuilding face recognition payload:")
+                sample_rate = float(os.getenv("FACE_RECOG_SAMPLE_RATE", "1.0"))
+                
+                face_recog_payload = build_face_recog_payload(
+                    diarization_segments=diarization_segments,
+                    transcribed_segments=all_segments,
+                    process_id=process_id,
+                    video_url=payload_schema.file,
+                    language_code=payload_schema.language_code,
+                    sample_rate=sample_rate
+                )
+                
+                print(f"   speakers: {len(face_recog_payload['speakers_metadata'])}")
+                for speaker_meta in face_recog_payload['speakers_metadata']:
+                    timestamp_count = len(speaker_meta['speaker_speech_timestamp'])
+                    print(f"      {speaker_meta['speaker_label']}: {timestamp_count} timestamp(s)")
+                
+                # Insert into database
+                insert_face_recog_payload(
+                    process_id=process_id,
+                    payload=face_recog_payload
+                )
+                
+            except Exception as e:
+                print(f"   WARNING: failed to create face recognition payload: {e}")
+                traceback.print_exc()
+                # Don't fail transcription if face recognition payload fails
             
         except Exception as e:
             print(f"   WARNING: diarization failed: {e}")
