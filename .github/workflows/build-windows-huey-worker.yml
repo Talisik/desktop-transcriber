@@ -2,7 +2,7 @@ name: Build Windows Huey Worker and Queue Simulator
 
 on:
   push:
-    branches: [ main, master ]  # Trigger on push to main/master branches
+    branches: [ main, master, face-recog/queue ]  # Trigger on push to main/master/face-recog/queue branches
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:  # Allow manual trigger from GitHub Actions UI
