@@ -2,10 +2,10 @@ name: Build Windows Huey Worker and Queue Simulator
 
 on:
   push:
-    branches: [ main, master, huey-build, windows/huey-build, optimized-windows/huey-build, stray, cc, diarization, model-persistence, model-presistence, queue/reduce-size, face-recog/queue ]
+    branches: [ main, master ]  # Trigger on push to main/master branches
   pull_request:
     branches: [ main, master ]
-  workflow_dispatch:
+  workflow_dispatch:  # Allow manual trigger from GitHub Actions UI
 
 jobs:
   build:

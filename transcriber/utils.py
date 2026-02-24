@@ -4,6 +4,9 @@ Utility functions for transcript processing.
 from typing import List, Dict, Any, Optional
 from collections import Counter
 import uuid
+import re
+import asyncio
+from munchkin_chunker import StandaloneChunker
 
 
 def format_timestamp(
@@ -456,4 +459,227 @@ def create_paragraphed_transcript(
         "paragraphs": paragraphs,
         "total_paragraphs": len(paragraphs),
     }
+
+
+def extract_full_text_from_segments(segments: List[Dict[str, Any]]) -> str:
+    """
+    Extracts the full text content from a list of whisperx segments.
+    
+    Args:
+        segments: List of whisperx segments with 'text' field
+        
+    Returns:
+        Full text string with all segment texts joined
+    """
+    return " ".join(segment.get("text", "") for segment in segments)
+
+
+def normalize_text_for_matching(text: str) -> str:
+    """
+    Normalizes text by converting to lowercase, removing punctuation,
+    and normalizing whitespace for robust matching.
+    
+    Args:
+        text: Text to normalize
+        
+    Returns:
+        Normalized text string
+    """
+    text = text.lower()
+    text = re.sub(r'[^\w\s]', '', text)  # Remove punctuation
+    text = re.sub(r'\s+', ' ', text).strip()  # Normalize whitespace
+    return text
+
+
+def map_words_to_sentences(
+    all_segments: List[Dict[str, Any]],
+    chunker_result: Dict[str, Any]
+) -> List[Dict[str, Any]]:
+    """
+    Maps whisperx word-level segments to munchkin-chunker's sentences and paragraphs,
+    calculating timestamps and building the hierarchical structure.
+    
+    Args:
+        all_segments: List of whisperx segments with words
+        chunker_result: Result from munchkin chunker with final_chunks_results
+        
+    Returns:
+        List of paragraph dictionaries with sentences and words mapped
+    """
+    # Flatten all words from segments, preserving order and metadata
+    # word.copy() preserves all fields including 'speaker' when diarization is enabled
+    all_words = []
+    for segment in all_segments:
+        if "words" in segment:
+            for word in segment["words"]:
+                all_words.append(word.copy())  # Preserves speaker labels and all other fields
+    
+    if not all_words:
+        return []
+    
+    # Get chunks from chunker result
+    chunks = chunker_result.get("final_chunks_results", [])
+    if not chunks:
+        return []
+    
+    paragraphs = []
+    
+    for chunk_idx, chunk in enumerate(chunks):
+        chunk_sentences = chunk.get("sentences", [])
+        chunk_content = chunk.get("content", "")
+        
+        # Track word index as we match
+        word_idx = 0
+        paragraph_words = []
+        sentences_data = []
+        
+        for sentence_text in chunk_sentences:
+            # Normalize sentence text for matching
+            normalized_sentence = normalize_text_for_matching(sentence_text)
+            
+            # Extract words from normalized sentence
+            sentence_words_text = normalized_sentence.split()
+            matched_words = []
+            
+            # Try to match words sequentially
+            for word_text in sentence_words_text:
+                if not word_text:  # Skip empty words
+                    continue
+                    
+                # Look for matching word starting from current position
+                found = False
+                # First try exact match after normalization
+                for i in range(word_idx, len(all_words)):
+                    word_obj = all_words[i]
+                    word_normalized = normalize_text_for_matching(word_obj.get("word", ""))
+                    
+                    # Exact match after normalization
+                    # word_obj is from all_words which contains copied word objects with all fields (including speaker)
+                    if word_text == word_normalized:
+                        matched_words.append(word_obj)  # Preserves speaker label if present
+                        word_idx = i + 1
+                        found = True
+                        break
+                
+                # If not found, try substring match
+                if not found:
+                    for i in range(word_idx, len(all_words)):
+                        word_obj = all_words[i]
+                        word_normalized = normalize_text_for_matching(word_obj.get("word", ""))
+                        
+                        # Check if normalized word matches (substring or contains)
+                        # word_obj preserves all fields including speaker label
+                        if word_text in word_normalized or word_normalized in word_text:
+                            matched_words.append(word_obj)  # Preserves speaker label if present
+                            word_idx = i + 1
+                            found = True
+                            break
+                
+                # If still not found, skip this word (might be punctuation-only or unmatched)
+                if not found:
+                    # Try to find closest match within next 5 words
+                    best_match = None
+                    best_score = 0
+                    for i in range(word_idx, min(word_idx + 5, len(all_words))):
+                        word_obj = all_words[i]
+                        word_normalized = normalize_text_for_matching(word_obj.get("word", ""))
+                        # Simple similarity: count matching characters
+                        if word_text and word_normalized:
+                            common_chars = sum(1 for c in word_text if c in word_normalized)
+                            score = common_chars / max(len(word_text), len(word_normalized))
+                            if score > best_score and score > 0.5:  # At least 50% similarity
+                                best_score = score
+                                best_match = (i, word_obj)
+                    
+                    if best_match:
+                        matched_words.append(best_match[1])  # Preserves speaker label if present
+                        word_idx = best_match[0] + 1
+            
+            # Calculate sentence timestamps
+            if matched_words:
+                sentence_start = min(w.get("start", 0.0) for w in matched_words)
+                sentence_end = max(w.get("end", 0.0) for w in matched_words)
+            else:
+                # Fallback: use previous word's end or 0
+                sentence_start = all_words[word_idx - 1].get("end", 0.0) if word_idx > 0 else 0.0
+                sentence_end = sentence_start
+            
+            # Build sentence data (keep timestamps as floats)
+            sentence_data = {
+                "text": sentence_text,
+                "start": sentence_start,
+                "end": sentence_end,
+                "words": matched_words
+            }
+            sentences_data.append(sentence_data)
+            # Add words to paragraph_words (preserves all fields including speaker labels)
+            paragraph_words.extend(matched_words)  # All word fields including speaker are preserved
+        
+        # Calculate paragraph timestamps
+        if paragraph_words:
+            paragraph_start = min(w.get("start", 0.0) for w in paragraph_words)
+            paragraph_end = max(w.get("end", 0.0) for w in paragraph_words)
+        else:
+            paragraph_start = 0.0
+            paragraph_end = 0.0
+        
+        # Build paragraph data (keep timestamps as floats)
+        paragraph_data = {
+            "index": chunk_idx,
+            "text": chunk_content,
+            "start": paragraph_start,
+            "end": paragraph_end,
+            "paragraph_words": paragraph_words,
+            "sentences": sentences_data
+        }
+        paragraphs.append(paragraph_data)
+    
+    return paragraphs
+
+
+def build_chunked_transcript(
+    all_segments: List[Dict[str, Any]],
+    chunker_result: Dict[str, Any],
+    process_id: str,
+    machine_name: str,
+    video_file: str,
+    model_name: str,
+    language: str,
+    diarized: bool = False,
+    num_speakers: int = 0
+) -> Dict[str, Any]:
+    """
+    Build hierarchical chunked transcript JSON structure.
+    
+    Args:
+        all_segments: List of whisperx segments with words
+        chunker_result: Result from munchkin chunker
+        process_id: Process ID
+        machine_name: Machine name
+        video_file: Video file identifier
+        model_name: Model name used
+        language: Language code
+        diarized: Whether diarization was enabled
+        num_speakers: Number of speakers (if diarized)
+        
+    Returns:
+        Dictionary with chunked transcript structure
+    """
+    paragraphs = map_words_to_sentences(all_segments, chunker_result)
+    
+    result = {
+        "process_id": process_id,
+        "machine_name": machine_name,
+        "video_file": video_file,
+        "model_name": model_name,
+        "language": language,
+        "total_paragraphs": len(paragraphs),
+        "paragraphs": paragraphs
+    }
+    
+    if diarized:
+        result["diarized"] = True
+        result["num_speakers"] = num_speakers
+    
+    return result
 

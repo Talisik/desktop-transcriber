@@ -5,7 +5,12 @@ Processes payloads with language-detected audio chunks and transcribes them usin
 from transcriber.concretions.whisperx_implementation.chemas.custom_types.parameter_types import Device, ComputeType, WhisperModel
 from transcriber.concretions.whisperx_implementation.chemas.payload.transcriber_argument_schema import WhisperXTranscriberArgumentSchema
 from transcriber.concretions.whisperx_implementation.whisperx_transcriber import WhisperXTranscriber
-from transcriber.utils import convert_to_cc, cc_to_srt, cc_to_vtt, create_paragraphed_transcript
+from transcriber.utils import (
+    convert_to_cc, cc_to_srt, cc_to_vtt, create_paragraphed_transcript,
+    extract_full_text_from_segments, build_chunked_transcript
+)
+from munchkin_chunker import StandaloneChunker
+import asyncio
 from huey import SqliteHuey
 from pydantic import BaseModel
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -1121,6 +1126,56 @@ def _transcribe_payload_task_impl(
     
     print(f"   paragraphs: {paragraph_result['total_paragraphs']}")
     print(f"   paragraph transcript saved: {paragraph_filepath}")
+
+    # --- Generate chunked transcript with sentences and words ---
+    print(f"\ngenerating hierarchical chunked transcript:")
+    try:
+        # Extract full text from all_segments
+        full_text = extract_full_text_from_segments(all_segments)
+
+        if not full_text.strip():
+            print(f"   WARNING: no text to chunk, skipping chunked transcript")
+        else:
+            # Initialize munchkin chunker
+            chunker = StandaloneChunker()
+            
+            # Prepare payload for munchkin chunker
+            chunker_payload = {
+                "process_id": process_id,
+                "post_requests": [{"request": {"content": full_text}}]
+            }
+            
+            # Process with munchkin chunker (async call)
+            print(f"   processing text with munchkin chunker...")
+            chunker_result = asyncio.run(chunker.process(chunker_payload))
+            
+            # Build the hierarchical JSON structure
+            chunked_transcript_data = build_chunked_transcript(
+                all_segments=all_segments,
+                chunker_result=chunker_result,
+                process_id=process_id,
+                machine_name=machine_name,
+                video_file=video_file,
+                model_name=whisper_model,
+                language=payload_schema.language_code,
+                diarized=diarized,
+                num_speakers=num_speakers if diarized else 0
+            )
+            
+            # Save chunked transcript
+            chunked_filename = f"{process_id}_chunked_transcript.json"
+            chunked_filepath = output_path / chunked_filename
+            
+            with open(chunked_filepath, "w", encoding="utf-8") as f:
+                json.dump(chunked_transcript_data, f, indent=2, ensure_ascii=False)
+            
+            print(f"   paragraphs: {chunked_transcript_data['total_paragraphs']}")
+            print(f"   chunked transcript saved: {chunked_filepath}")
+    
+    except Exception as e:
+        print(f"   WARNING: failed to generate hierarchical chunked transcript: {e}")
+        traceback.print_exc()
+        # Don't fail transcription if chunking fails
 
     return str(filepath)
 
