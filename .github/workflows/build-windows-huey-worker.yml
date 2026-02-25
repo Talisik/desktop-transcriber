@@ -1,4 +1,4 @@
-name: Build Windows Huey Worker and Queue Simulator
+name: Build Windows Resource Tracker
 
 on:
   push:
@@ -26,58 +26,58 @@ jobs:
           python -m pip install --upgrade pip
           pip install build
       
-      - name: Configure git credentials for private repo
-        run: |
-          git config --global credential.helper store
-          $credential = "https://x-token-auth:${{ secrets.BITBUCKET_TOKEN }}@bitbucket.org"
-          $credential | Out-File -FilePath "$env:USERPROFILE\.git-credentials" -Encoding utf8 -NoNewline
+      # - name: Configure git credentials for private repo
+      #   run: |
+      #     git config --global credential.helper store
+      #     $credential = "https://x-token-auth:${{ secrets.BITBUCKET_TOKEN }}@bitbucket.org"
+      #     $credential | Out-File -FilePath "$env:USERPROFILE\.git-credentials" -Encoding utf8 -NoNewline
       
       - name: Install project dependencies
         run: |
           pip install -e .
       
-      - name: Install CUDA-enabled PyTorch
-        run: |
-          pip uninstall -y torch torchvision torchaudio
-          pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+      # - name: Install CUDA-enabled PyTorch
+      #   run: |
+      #     pip uninstall -y torch torchvision torchaudio
+      #     pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
       
       - name: Install PyInstaller
         run: |
           pip install pyinstaller>=6.17.0
       
-      - name: Build huey_worker executable with PyInstaller
-        run: |
-          pyinstaller huey_worker_windows.spec --clean --noconfirm
+      # - name: Build huey_worker executable with PyInstaller
+      #   run: |
+      #     pyinstaller huey_worker_windows.spec --clean --noconfirm
       
-      - name: Build queue_simulator executable with PyInstaller
-        run: |
-          pyinstaller queue_simulator_windows.spec --clean --noconfirm
+      # - name: Build queue_simulator executable with PyInstaller
+      #   run: |
+      #     pyinstaller queue_simulator_windows.spec --clean --noconfirm
       
       - name: Build resource_tracker executable with PyInstaller
         run: |
           pyinstaller resource_tracker_windows.spec --clean --noconfirm
       
-      - name: Verify huey_worker executable exists
-        run: |
-          if (Test-Path "dist\huey_worker.exe") {
-            Write-Host "huey_worker.exe built successfully"
-            $fileInfo = Get-Item "dist\huey_worker.exe"
-            Write-Host "   Size: $([math]::Round($fileInfo.Length / 1MB, 2)) MB"
-          } else {
-            Write-Host "huey_worker.exe not found!"
-            exit 1
-          }
+      # - name: Verify huey_worker executable exists
+      #   run: |
+      #     if (Test-Path "dist\huey_worker.exe") {
+      #       Write-Host "huey_worker.exe built successfully"
+      #       $fileInfo = Get-Item "dist\huey_worker.exe"
+      #       Write-Host "   Size: $([math]::Round($fileInfo.Length / 1MB, 2)) MB"
+      #     } else {
+      #       Write-Host "huey_worker.exe not found!"
+      #       exit 1
+      #     }
       
-      - name: Verify queue_simulator executable exists
-        run: |
-          if (Test-Path "dist\queue_simulator.exe") {
-            Write-Host "queue_simulator.exe built successfully"
-            $fileInfo = Get-Item "dist\queue_simulator.exe"
-            Write-Host "   Size: $([math]::Round($fileInfo.Length / 1MB, 2)) MB"
-          } else {
-            Write-Host "queue_simulator.exe not found!"
-            exit 1
-          }
+      # - name: Verify queue_simulator executable exists
+      #   run: |
+      #     if (Test-Path "dist\queue_simulator.exe") {
+      #       Write-Host "queue_simulator.exe built successfully"
+      #       $fileInfo = Get-Item "dist\queue_simulator.exe"
+      #       Write-Host "   Size: $([math]::Round($fileInfo.Length / 1MB, 2)) MB"
+      #     } else {
+      #       Write-Host "queue_simulator.exe not found!"
+      #       exit 1
+      #     }
       
       - name: Verify resource_tracker executable exists
         run: |
@@ -90,21 +90,21 @@ jobs:
             exit 1
           }
       
-      - name: Upload huey_worker artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-huey-worker
-          path: dist/huey_worker.exe
-          retention-days: 1
-          if-no-files-found: error
+      # - name: Upload huey_worker artifact
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: windows-huey-worker
+      #     path: dist/huey_worker.exe
+      #     retention-days: 1
+      #     if-no-files-found: error
       
-      - name: Upload queue_simulator artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-queue-simulator
-          path: dist/queue_simulator.exe
-          retention-days: 1
-          if-no-files-found: error
+      # - name: Upload queue_simulator artifact
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: windows-queue-simulator
+      #     path: dist/queue_simulator.exe
+      #     retention-days: 1
+      #     if-no-files-found: error
       
       - name: Upload resource_tracker artifact
         uses: actions/upload-artifact@v4
