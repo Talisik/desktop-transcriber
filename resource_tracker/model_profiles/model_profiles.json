@@ -34,7 +34,11 @@
         "recommended": 8
       }
     },
-    "notes": "Fastest model with lowest accuracy. Best for speed-focused workloads, real-time transcription, or low-resource systems. Suitable for CPU-only environments."
+    "notes": "Fastest model with lowest accuracy. Best for speed-focused workloads, real-time transcription, or low-resource systems. Suitable for CPU-only environments.",
+    "min_ram_mb": 4096.0,
+    "recommended_ram_mb": 4096.0,
+    "min_vram_mb": null,
+    "recommended_vram_mb": null
   },
   "base": {
     "min_ram_gb": 4.0,
@@ -82,7 +86,11 @@
         "recommended": 8
       }
     },
-    "notes": "Small model with low-medium accuracy. Good balance of speed and quality for general transcription tasks. Works well on CPU or low-end GPUs."
+    "notes": "Small model with low-medium accuracy. Good balance of speed and quality for general transcription tasks. Works well on CPU or low-end GPUs.",
+    "min_ram_mb": 4096.0,
+    "recommended_ram_mb": 4096.0,
+    "min_vram_mb": null,
+    "recommended_vram_mb": null
   },
   "small": {
     "min_ram_gb": 4.0,
@@ -130,7 +138,11 @@
         "recommended": 8
       }
     },
-    "notes": "Moderate size model with balanced accuracy and speed. Good default choice for most transcription tasks. Recommended for balanced priority mode."
+    "notes": "Moderate size model with balanced accuracy and speed. Good default choice for most transcription tasks. Recommended for balanced priority mode.",
+    "min_ram_mb": 4096.0,
+    "recommended_ram_mb": 6144.0,
+    "min_vram_mb": null,
+    "recommended_vram_mb": null
   },
   "medium": {
     "min_ram_gb": 16.0,
@@ -178,7 +190,11 @@
         "recommended": 4
       }
     },
-    "notes": "Larger model with good accuracy. Requires more resources but provides better transcription quality. Best used with GPU for reasonable speed."
+    "notes": "Larger model with good accuracy. Requires more resources but provides better transcription quality. Best used with GPU for reasonable speed.",
+    "min_ram_mb": 16384.0,
+    "recommended_ram_mb": 16384.0,
+    "min_vram_mb": null,
+    "recommended_vram_mb": null
   },
   "large": {
     "min_ram_gb": 16.0,
@@ -226,7 +242,11 @@
         "recommended": 2
       }
     },
-    "notes": "Large model with high accuracy. Requires significant GPU VRAM and system RAM. Best for quality-focused workloads where accuracy is paramount."
+    "notes": "Large model with high accuracy. Requires significant GPU VRAM and system RAM. Best for quality-focused workloads where accuracy is paramount.",
+    "min_ram_mb": 16384.0,
+    "recommended_ram_mb": 32768.0,
+    "min_vram_mb": 10240.0,
+    "recommended_vram_mb": 10240.0
   },
   "large-v2": {
     "min_ram_gb": 16.0,
@@ -274,7 +294,11 @@
         "recommended": 2
       }
     },
-    "notes": "Optimized variant of large model with similar resource requirements. Provides high accuracy with some performance improvements over original large model."
+    "notes": "Optimized variant of large model with similar resource requirements. Provides high accuracy with some performance improvements over original large model.",
+    "min_ram_mb": 16384.0,
+    "recommended_ram_mb": 32768.0,
+    "min_vram_mb": 10240.0,
+    "recommended_vram_mb": 10240.0
   },
   "large-v3": {
     "min_ram_gb": 16.0,
@@ -322,7 +346,11 @@
         "recommended": 2
       }
     },
-    "notes": "Latest large model variant with best accuracy. Requires high-end GPU with substantial VRAM. Best choice for quality-focused transcription where accuracy is critical."
+    "notes": "Latest large model variant with best accuracy. Requires high-end GPU with substantial VRAM. Best choice for quality-focused transcription where accuracy is critical.",
+    "min_ram_mb": 16384.0,
+    "recommended_ram_mb": 32768.0,
+    "min_vram_mb": 10240.0,
+    "recommended_vram_mb": 10240.0
   },
   "turbo": {
     "min_ram_gb": 16.0,
@@ -370,7 +398,10 @@
         "recommended": 4
       }
     },
-    "notes": "Optimized version of large-v3 offering faster transcription speed (~8x relative to large) with minimal accuracy degradation. Requires ~6 GB VRAM. Best for English transcription tasks. Note: Not trained for translation tasks."
+    "notes": "Optimized version of large-v3 offering faster transcription speed (~8x relative to large) with minimal accuracy degradation. Requires ~6 GB VRAM. Best for English transcription tasks. Note: Not trained for translation tasks.",
+    "min_ram_mb": 16384.0,
+    "recommended_ram_mb": 16384.0,
+    "min_vram_mb": null,
+    "recommended_vram_mb": 8192.0
   }
 }
-
