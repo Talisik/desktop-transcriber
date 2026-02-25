@@ -31,7 +31,6 @@ jobs:
           git config --global credential.helper store
           $credential = "https://x-token-auth:${{ secrets.BITBUCKET_TOKEN }}@bitbucket.org"
           $credential | Out-File -FilePath "$env:USERPROFILE\.git-credentials" -Encoding utf8 -NoNewline
-        if: secrets.BITBUCKET_TOKEN != ''
       
       - name: Install project dependencies
         run: |
