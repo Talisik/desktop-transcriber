@@ -53,6 +53,10 @@ jobs:
         run: |
           pyinstaller queue_simulator_windows.spec --clean --noconfirm
       
+      - name: Build resource_tracker executable with PyInstaller
+        run: |
+          pyinstaller resource_tracker_windows.spec --clean --noconfirm
+      
       - name: Verify huey_worker executable exists
         run: |
           if (Test-Path "dist\huey_worker.exe") {
@@ -75,6 +79,17 @@ jobs:
             exit 1
           }
       
+      - name: Verify resource_tracker executable exists
+        run: |
+          if (Test-Path "dist\resource_tracker.exe") {
+            Write-Host "resource_tracker.exe built successfully"
+            $fileInfo = Get-Item "dist\resource_tracker.exe"
+            Write-Host "   Size: $([math]::Round($fileInfo.Length / 1MB, 2)) MB"
+          } else {
+            Write-Host "resource_tracker.exe not found!"
+            exit 1
+          }
+      
       - name: Upload huey_worker artifact
         uses: actions/upload-artifact@v4
         with:
@@ -88,6 +103,14 @@ jobs:
         with:
           name: windows-queue-simulator
           path: dist/queue_simulator.exe
+          retention-days: 1
+          if-no-files-found: error
+      
+      - name: Upload resource_tracker artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-resource-tracker
+          path: dist/resource_tracker.exe
           retention-days: 1
           if-no-files-found: error
 
