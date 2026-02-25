@@ -17,7 +17,7 @@ dependencies = [
     "huey>=2.5.0",
     "pytorch-lightning>=2.1.0",
     "torchmetrics>=1.2.0",
-    "munchkin-chunker",
+    "munchkin-chunker @ git+https://bitbucket.org/metawhale/munchkin_chunker.git",
 ]
 
 [tool.setuptools.packages.find]
