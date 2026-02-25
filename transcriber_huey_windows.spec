@@ -23,6 +23,10 @@ pyannote_submodules = collect_submodules('pyannote')
 huey_datas = collect_data_files('huey')
 huey_submodules = collect_submodules('huey')
 
+# collect munchkin_chunker data files and submodules
+munchkin_chunker_datas = collect_data_files('munchkin_chunker')
+munchkin_chunker_submodules = collect_submodules('munchkin_chunker')
+
 # Comprehensive transformers collection to fix torchcodec and metadata issues
 transformers_datas, transformers_binaries, transformers_hiddenimports = collect_all('transformers')
 
@@ -83,13 +87,15 @@ hiddenimports = [
     'transcriber.concretions.whisperx_implementation.chemas.custom_types',
     'transcriber.concretions.whisperx_implementation.chemas.custom_types.parameter_types',
     'pydantic',
-] + whisperx_submodules + huey_submodules + speechbrain_submodules + list(speechbrain_hiddenimports) + pyannote_submodules + list(pyannote_hiddenimports) + list(transformers_hiddenimports)
+    # munchkin_chunker imports
+    'munchkin_chunker',
+] + whisperx_submodules + huey_submodules + speechbrain_submodules + list(speechbrain_hiddenimports) + pyannote_submodules + list(pyannote_hiddenimports) + list(transformers_hiddenimports) + munchkin_chunker_submodules
 
 a = Analysis(
     ['transcriber_huey.py'],
     pathex=[],
     binaries=speechbrain_binaries + pyannote_binaries + transformers_binaries,
-    datas=whisperx_datas + faster_whisper_datas + lightning_fabric_datas + speechbrain_datas + pyannote_datas + huey_datas + transformers_datas,
+    datas=whisperx_datas + faster_whisper_datas + lightning_fabric_datas + speechbrain_datas + pyannote_datas + huey_datas + transformers_datas + munchkin_chunker_datas,
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
@@ -121,6 +127,8 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
 )
+
+
 
 
 

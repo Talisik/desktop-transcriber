@@ -24,6 +24,10 @@ pyannote_submodules = collect_submodules('pyannote')
 huey_datas = collect_data_files('huey')
 huey_submodules = collect_submodules('huey')
 
+# collect munchkin_chunker data files and submodules
+munchkin_chunker_datas = collect_data_files('munchkin_chunker')
+munchkin_chunker_submodules = collect_submodules('munchkin_chunker')
+
 # filter out nvidia CUDA binaries - these should be loaded from system, not bundled
 def filter_cuda_binaries(binaries_list):
     """Filter out nvidia CUDA library binaries to avoid extraction errors."""
@@ -102,13 +106,15 @@ hiddenimports = [
     'transcriber.concretions.whisperx_implementation.chemas.custom_types',
     'transcriber.concretions.whisperx_implementation.chemas.custom_types.parameter_types',
     'pydantic',
-] + whisperx_submodules + huey_submodules + speechbrain_submodules + list(speechbrain_hiddenimports) + pyannote_submodules + list(pyannote_hiddenimports)
+    # munchkin_chunker imports
+    'munchkin_chunker',
+] + whisperx_submodules + huey_submodules + speechbrain_submodules + list(speechbrain_hiddenimports) + pyannote_submodules + list(pyannote_hiddenimports) + munchkin_chunker_submodules
 
 a = Analysis(
     ['huey_worker.py'],
     pathex=[],
     binaries=filtered_binaries,
-    datas=whisperx_datas + faster_whisper_datas + lightning_fabric_datas + speechbrain_datas + pyannote_datas + huey_datas,
+    datas=whisperx_datas + faster_whisper_datas + lightning_fabric_datas + speechbrain_datas + pyannote_datas + huey_datas + munchkin_chunker_datas,
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},

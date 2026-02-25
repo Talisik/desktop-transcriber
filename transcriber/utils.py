@@ -6,7 +6,6 @@ from collections import Counter
 import uuid
 import re
 import asyncio
-from munchkin_chunker import StandaloneChunker
 
 
 def format_timestamp(
