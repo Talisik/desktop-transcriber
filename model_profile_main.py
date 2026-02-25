@@ -104,9 +104,32 @@ def main():
                 json_data = json.load(f)
                 resource_data = parse_resource_tracker_json(json_data)
         elif not sys.stdin.isatty():
-            # stdin has data (piped input)
-            json_data = json.load(sys.stdin)
-            resource_data = parse_resource_tracker_json(json_data)
+            # stdin might have data (piped input) - try to read it
+            try:
+                json_data = json.load(sys.stdin)
+                resource_data = parse_resource_tracker_json(json_data)
+            except (json.JSONDecodeError, ValueError):
+                # stdin is empty or invalid, use standalone mode
+                tracker = DesktopResourceTracker()
+                resource_data = {
+                    "ram_available_mb": tracker.get_available_ram_mb(),
+                    "ram_total_mb": tracker.get_total_ram_mb(),
+                    "ram_used_mb": tracker.get_used_ram_mb(),
+                    "ram_available_gb": tracker.get_available_ram_mb() / 1024,
+                    "ram_total_gb": tracker.get_total_ram_mb() / 1024,
+                    "ram_usage_percent": tracker.get_ram_usage_percent(),
+                    "cpu_cores": tracker.get_total_cpu(),
+                    "cpu_usage_percent": tracker.get_cpu_usage_percent(),
+                    "has_gpu": tracker.has_gpu(),
+                    "vram_total_mb": tracker.get_gpu_vram_mb() if tracker.has_gpu() else None,
+                    "vram_used_mb": tracker.get_used_gpu_vram_mb() if tracker.has_gpu() else None,
+                    "vram_available_mb": None,
+                    "vram_available_gb": None,
+                    "vram_total_gb": tracker.get_gpu_vram() if tracker.has_gpu() else None
+                }
+                if resource_data["has_gpu"] and resource_data["vram_total_mb"] and resource_data["vram_used_mb"]:
+                    resource_data["vram_available_mb"] = resource_data["vram_total_mb"] - resource_data["vram_used_mb"]
+                    resource_data["vram_available_gb"] = resource_data["vram_available_mb"] / 1024
         else:
             # no input provided, use standalone mode
             tracker = DesktopResourceTracker()
