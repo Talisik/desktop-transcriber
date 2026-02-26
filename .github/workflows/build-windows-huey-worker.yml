@@ -36,10 +36,10 @@ jobs:
         run: |
           pip install -e .
       
-      # - name: Install CUDA-enabled PyTorch
-      #   run: |
-      #     pip uninstall -y torch torchvision torchaudio
-      #     pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+      - name: Install CUDA-enabled PyTorch
+        run: |
+          pip uninstall -y torch torchvision torchaudio
+          pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
       
       - name: Install PyInstaller
         run: |
