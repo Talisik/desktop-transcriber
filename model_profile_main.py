@@ -34,27 +34,25 @@ def parse_resource_tracker_json(json_data: Dict[str, Any]) -> Dict[str, Any]:
     cpu_data = json_data.get("cpu", {})
     gpu_data = json_data.get("gpu", {})
     
-    # extract RAM values (prefer available, fallback to total)
-    ram_available_mb = ram_data.get("available_mb", ram_data.get("total_mb", 0))
+    # extract RAM values - use total instead of available
     ram_total_mb = ram_data.get("total_mb", 0)
+    ram_available_mb = ram_data.get("available_mb", ram_total_mb)
     ram_used_mb = ram_data.get("used_mb", 0)
-    ram_available_gb = ram_available_mb / 1024
     ram_total_gb = ram_total_mb / 1024
+    ram_available_gb = ram_available_mb / 1024
     
     # extract CPU
     cpu_cores = cpu_data.get("cores", 0)
     
-    # extract GPU/VRAM
+    # extract GPU/VRAM - use total instead of available
     has_gpu = gpu_data.get("available", False)
     vram_total_mb = gpu_data.get("vram_total_mb")
     vram_used_mb = gpu_data.get("vram_used_mb", 0) if has_gpu else None
     
-    # calculate available VRAM
-    vram_available_mb = None
-    vram_available_gb = None
+    # use total VRAM (not available)
+    vram_total_gb = None
     if has_gpu and vram_total_mb is not None:
-        vram_available_mb = vram_total_mb - (vram_used_mb or 0)
-        vram_available_gb = vram_available_mb / 1024
+        vram_total_gb = vram_total_mb / 1024
     
     return {
         "ram_available_mb": ram_available_mb,
@@ -68,9 +66,9 @@ def parse_resource_tracker_json(json_data: Dict[str, Any]) -> Dict[str, Any]:
         "has_gpu": has_gpu,
         "vram_total_mb": vram_total_mb,
         "vram_used_mb": vram_used_mb,
-        "vram_available_mb": vram_available_mb,
-        "vram_available_gb": vram_available_gb,
-        "vram_total_gb": vram_data.get("vram_total_gb") if has_gpu else None
+        "vram_available_mb": None,  # not used anymore
+        "vram_available_gb": None,  # not used anymore
+        "vram_total_gb": vram_total_gb
     }
 
 
@@ -127,9 +125,6 @@ def main():
                     "vram_available_gb": None,
                     "vram_total_gb": tracker.get_gpu_vram() if tracker.has_gpu() else None
                 }
-                if resource_data["has_gpu"] and resource_data["vram_total_mb"] and resource_data["vram_used_mb"]:
-                    resource_data["vram_available_mb"] = resource_data["vram_total_mb"] - resource_data["vram_used_mb"]
-                    resource_data["vram_available_gb"] = resource_data["vram_available_mb"] / 1024
         else:
             # no input provided, use standalone mode
             tracker = DesktopResourceTracker()
@@ -149,34 +144,30 @@ def main():
                 "vram_available_gb": None,
                 "vram_total_gb": tracker.get_gpu_vram() if tracker.has_gpu() else None
             }
-            # calculate available VRAM if GPU available
-            if resource_data["has_gpu"] and resource_data["vram_total_mb"] and resource_data["vram_used_mb"]:
-                resource_data["vram_available_mb"] = resource_data["vram_total_mb"] - resource_data["vram_used_mb"]
-                resource_data["vram_available_gb"] = resource_data["vram_available_mb"] / 1024
         
-        # get compatible models using available resources
+        # get compatible models using total resources (not available)
         if tracker:
             # use tracker object (standalone mode)
             compatible_quality = reader.get_compatible_models_quality_first(
-                tracker, use_available_resources=True, safety_margin=args.safety_margin
+                tracker, use_available_resources=False, safety_margin=args.safety_margin
             )
             compatible_speed = reader.get_compatible_models_speed_first(
-                tracker, use_available_resources=True, safety_margin=args.safety_margin
+                tracker, use_available_resources=False, safety_margin=args.safety_margin
             )
             compatible_balanced = reader.get_compatible_models_balanced(
-                tracker, use_available_resources=True, safety_margin=args.safety_margin
+                tracker, use_available_resources=False, safety_margin=args.safety_margin
             )
             all_compatible = reader.get_compatible_models(
-                tracker, use_available_resources=True, safety_margin=args.safety_margin
+                tracker, use_available_resources=False, safety_margin=args.safety_margin
             )
         else:
-            # use direct parameters (pipeline mode) - use get_compatible_models_ranked
+            # use direct parameters (pipeline mode) - use total resources
             all_compatible = reader.get_compatible_models(
-                ram_gb=resource_data["ram_available_gb"],
+                ram_gb=resource_data["ram_total_gb"],
                 cpu_cores=resource_data["cpu_cores"],
                 has_gpu=resource_data["has_gpu"],
-                vram_gb=resource_data["vram_available_gb"],
-                use_available_resources=True,
+                vram_gb=resource_data["vram_total_gb"],
+                use_available_resources=False,
                 safety_margin=args.safety_margin
             )
             

@@ -1,0 +1,65 @@
+name: Build Windows Model Profile
+
+on:
+  push:
+    branches: [ main, master, face-recog/queue ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:  # Allow manual trigger from GitHub Actions UI
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build
+      
+      - name: Install project dependencies
+        run: |
+          pip install -e .
+      
+      - name: Install PyInstaller
+        run: |
+          pip install pyinstaller>=6.17.0
+      
+      - name: Build model_profile executable with PyInstaller
+        run: |
+          pyinstaller model_profile_windows.spec --clean --noconfirm
+      
+      - name: Verify model_profile executable exists
+        run: |
+          if (Test-Path "dist\model_profile\model_profile.exe") {
+            Write-Host "✅ model_profile.exe built successfully"
+            $fileInfo = Get-Item "dist\model_profile\model_profile.exe"
+            Write-Host "   Size: $([math]::Round($fileInfo.Length / 1MB, 2)) MB"
+          } elseif (Test-Path "dist\model_profile.exe") {
+            Write-Host "✅ model_profile.exe built successfully"
+            $fileInfo = Get-Item "dist\model_profile.exe"
+            Write-Host "   Size: $([math]::Round($fileInfo.Length / 1MB, 2)) MB"
+          } else {
+            Write-Host "❌ model_profile.exe not found!"
+            exit 1
+          }
+      
+      - name: Upload model_profile artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-model-profile
+          path: |
+            dist/model_profile.exe
+            dist/model_profile/model_profile.exe
+          retention-days: 7
+          if-no-files-found: error
+
