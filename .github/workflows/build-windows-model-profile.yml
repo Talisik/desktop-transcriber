@@ -1,5 +1,6 @@
 name: Build Windows Model Profile
 
+# Build model_profile Windows executable
 on:
   push:
     branches: [ main, master, face-recog/queue ]
