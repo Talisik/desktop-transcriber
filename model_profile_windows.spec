@@ -7,7 +7,8 @@ from pathlib import Path
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
 # get absolute path to spec file directory (project root)
-spec_root = Path(__file__).parent.absolute()
+# __file__ is not available in spec context, use os.getcwd() since PyInstaller runs from project root
+spec_root = Path(os.getcwd())
 
 # collect resource_tracker data files and submodules
 resource_tracker_datas = collect_data_files('resource_tracker')
