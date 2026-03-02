@@ -15,6 +15,7 @@ Usage:
 import argparse
 import json
 import sys
+from pathlib import Path
 from typing import Optional, Dict, Any
 from resource_tracker.concretions.desktop_resource_tracker import DesktopResourceTracker
 from resource_tracker.model_profiles.model_profile_reader import ModelProfileReader
@@ -98,9 +99,33 @@ def main():
         
         # try to read from input file or stdin
         if args.input:
-            with open(args.input, 'r') as f:
-                json_data = json.load(f)
-                resource_data = parse_resource_tracker_json(json_data)
+            # resolve path - handle both relative and absolute paths
+            input_path = Path(args.input)
+            if not input_path.is_absolute():
+                # if relative, resolve from current working directory
+                input_path = Path.cwd() / input_path
+            
+            if not input_path.exists():
+                error_result = {
+                    "error": f"input file not found: {args.input}",
+                    "resolved_path": str(input_path),
+                    "type": "FileNotFoundError"
+                }
+                print(json.dumps(error_result, indent=2), file=sys.stderr)
+                return 1
+            
+            try:
+                with open(input_path, 'r') as f:
+                    json_data = json.load(f)
+                    resource_data = parse_resource_tracker_json(json_data)
+            except json.JSONDecodeError as e:
+                error_result = {
+                    "error": f"invalid JSON in input file: {str(e)}",
+                    "file": str(input_path),
+                    "type": "JSONDecodeError"
+                }
+                print(json.dumps(error_result, indent=2), file=sys.stderr)
+                return 1
         elif not sys.stdin.isatty():
             # stdin might have data (piped input) - try to read it
             try:

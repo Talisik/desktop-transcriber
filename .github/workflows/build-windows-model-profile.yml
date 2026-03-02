@@ -36,6 +36,7 @@ jobs:
       
       - name: Build model_profile executable with PyInstaller
         run: |
+          $env:PYTHONPATH = "$PWD"
           pyinstaller model_profile_windows.spec --clean --noconfirm
       
       - name: Verify model_profile executable exists

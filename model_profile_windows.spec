@@ -3,7 +3,11 @@
 
 import sys
 import os
+from pathlib import Path
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules
+
+# get absolute path to spec file directory (project root)
+spec_root = Path(__file__).parent.absolute()
 
 # collect resource_tracker data files and submodules
 resource_tracker_datas = collect_data_files('resource_tracker')
@@ -27,8 +31,8 @@ hiddenimports = [
 ] + resource_tracker_submodules
 
 a = Analysis(
-    ['model_profile_main.py'],
-    pathex=[],
+    [str(spec_root / 'model_profile_main.py')],
+    pathex=[str(spec_root)],
     binaries=[],
     datas=resource_tracker_datas + psutil_datas,
     hiddenimports=hiddenimports,
