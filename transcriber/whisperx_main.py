@@ -77,11 +77,44 @@ def download_alignment_model(
     language_code: str,
     device: str = "cuda"
 ):
-    model_a, metadata = whisperx.load_align_model(
-        language_code=language_code, 
-        device=device
-    )
-    return model_a, metadata
+    """
+    Download alignment model for given language code.
+    Falls back to English if language not supported.
+    """
+    try:
+        model_a, metadata = whisperx.load_align_model(
+            language_code=language_code, 
+            device=device
+        )
+        return model_a, metadata
+    except (ValueError, RuntimeError, OSError, Exception) as e:
+        error_msg = str(e).lower()
+        # Check for various error messages indicating model not found
+        model_not_found_indicators = [
+            "no default align-model for language",
+            "could not be found",
+            "not found in huggingface",
+            "not found in torchaudio",
+            "model not found",
+            "could not find",
+            "does not exist",
+        ]
+        
+        if any(indicator in error_msg for indicator in model_not_found_indicators):
+            if language_code != "en":
+                print(f"WARNING: Alignment model for language '{language_code}' not available, falling back to English")
+                # Fall back to English
+                model_a, metadata = whisperx.load_align_model(
+                    language_code="en", 
+                    device=device
+                )
+                return model_a, metadata
+            else:
+                # Already English, re-raise
+                raise RuntimeError(f"Failed to load English alignment model: {e}") from e
+        else:
+            # Different error, re-raise
+            raise
 
 
 def load_audio(audio_file: str):

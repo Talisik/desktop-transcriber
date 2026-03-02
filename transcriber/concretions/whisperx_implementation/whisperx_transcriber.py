@@ -97,7 +97,7 @@ class WhisperXTranscriber(TranscriberBase):
             device = getattr(self, 'device', "cpu")
         
         # Try to load alignment model for requested language
-        # Fall back to English if language not supported
+        # Fall back to English if language not supported or model not found
         alignment_language = language_code
         
         try:
@@ -106,18 +106,41 @@ class WhisperXTranscriber(TranscriberBase):
                 device=device
             )
             print(f"alignment model downloaded (language: {alignment_language})")
-        except ValueError as e:
-            # Language not supported, fall back to English
-            if "No default align-model for language" in str(e):
-                print(f"WARNING: No alignment model for language '{language_code}', falling back to English")
-                alignment_language = "en"
-                self.alignment_model = whisperx.load_align_model(
-                    language_code=alignment_language, 
-                    device=device
-                )
-                print(f"alignment model downloaded (language: {alignment_language})")
+        except (ValueError, RuntimeError, OSError, Exception) as e:
+            error_msg = str(e).lower()
+            # Check for various error messages indicating model not found or language not supported
+            model_not_found_indicators = [
+                "no default align-model for language",
+                "could not be found",
+                "not found in huggingface",
+                "not found in torchaudio",
+                "model not found",
+                "could not find",
+                "does not exist",
+            ]
+            
+            if any(indicator in error_msg for indicator in model_not_found_indicators):
+                # Language not supported or model doesn't exist, fall back to English
+                if alignment_language != "en":
+                    print(f"WARNING: Alignment model for language '{language_code}' not available: {e}")
+                    print(f"WARNING: Falling back to English alignment model")
+                    alignment_language = "en"
+                    try:
+                        self.alignment_model = whisperx.load_align_model(
+                            language_code=alignment_language, 
+                            device=device
+                        )
+                        print(f"alignment model downloaded (language: {alignment_language})")
+                    except Exception as fallback_error:
+                        # If even English fails, that's a real problem
+                        print(f"ERROR: Failed to load English alignment model (fallback): {fallback_error}")
+                        raise RuntimeError(f"Failed to load alignment model for language '{language_code}' and fallback to English also failed: {fallback_error}") from fallback_error
+                else:
+                    # Already trying English, so this is a real error
+                    raise RuntimeError(f"Failed to load English alignment model: {e}") from e
             else:
-                raise  # Re-raise if it's a different error
+                # Different error, re-raise it
+                raise
 
     @staticmethod
     def __load_audio(audio_file: str):

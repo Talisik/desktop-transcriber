@@ -15,6 +15,7 @@ Usage:
 import argparse
 import json
 import sys
+
 from pathlib import Path
 from typing import Optional, Dict, Any
 from resource_tracker.concretions.desktop_resource_tracker import DesktopResourceTracker

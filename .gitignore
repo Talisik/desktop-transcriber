@@ -47,6 +47,8 @@ output/
 *.ogg
 salina_vad.db
 
+*.json
+
 # Benchmark results
 benchmark_results/
 
