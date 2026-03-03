@@ -622,6 +622,13 @@ def map_words_to_sentences(
             paragraph_start = 0.0
             paragraph_end = 0.0
         
+        # Ensure continuity: next paragraph starts where previous ends
+        if paragraphs and chunk_idx > 0:
+            previous_paragraph_end = paragraphs[-1].get("end", 0.0)
+            # Only adjust if there's a gap (don't create overlaps)
+            if paragraph_start > previous_paragraph_end:
+                paragraph_start = previous_paragraph_end
+        
         # Build paragraph data (keep timestamps as floats)
         paragraph_data = {
             "index": chunk_idx,
