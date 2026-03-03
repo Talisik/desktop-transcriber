@@ -2,7 +2,7 @@ name: Build Windows Executables
 
 on:
   push:
-    branches: [ main, master ]  # Trigger on push to main/master branches
+    branches: [ main, master, staging, face-recog/queue ]  # Trigger on push to main/master/staging/face-recog/queue branches
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:  # Allow manual trigger from GitHub Actions UI
