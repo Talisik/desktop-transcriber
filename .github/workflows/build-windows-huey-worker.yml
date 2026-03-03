@@ -53,6 +53,7 @@ jobs:
         run: |
           pyinstaller huey_worker_windows.spec --clean --noconfirm
       
+      
       # - name: Build transcriber_huey executable with PyInstaller
       #   run: |
       #     pyinstaller transcriber_huey_windows.spec --clean --noconfirm
