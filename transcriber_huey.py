@@ -1129,6 +1129,7 @@ def _transcribe_payload_task_impl(
 
     # --- Generate chunked transcript with sentences and words ---
     print(f"\ngenerating hierarchical chunked transcript:")
+    chunked_transcript_data = None  # Initialize to None
     try:
         # Extract full text from all_segments
         full_text = extract_full_text_from_segments(all_segments)
@@ -1176,6 +1177,44 @@ def _transcribe_payload_task_impl(
         print(f"   WARNING: failed to generate hierarchical chunked transcript: {e}")
         traceback.print_exc()
         # Don't fail transcription if chunking fails
+        chunked_transcript_data = None  # Set to None if chunking failed
+
+    # ============================================
+    # 💾 SAVE TO DATABASE
+    # ============================================
+    print(f"\nsaving transcript data to database:")
+    try:
+        from transcriber.db.transcript_db import save_transcript_to_db
+        
+        # Get database path from env var
+        db_path = os.getenv("TRANSCRIPT_DB_PATH", "transcription_storage.db")
+        
+        # Only save if we have chunked data (chunking succeeded)
+        if chunked_transcript_data:
+            # Prepare metadata
+            transcription_metadata = {
+                'language': payload_schema.language_code,
+                'language_code': payload_schema.language_code,
+                'video_source': video_file,
+                'transcription_name': process_id
+            }
+            
+            save_transcript_to_db(
+                db_path=db_path,
+                process_id=process_id,
+                all_segments=all_segments,
+                cc_result=cc_result,
+                chunked_transcript_data=chunked_transcript_data,
+                transcription_metadata=transcription_metadata
+            )
+            print(f"   ✓ transcript data saved to database: {db_path}")
+        else:
+            print(f"   ⚠ skipping database save (chunking failed)")
+            
+    except Exception as e:
+        print(f"   WARNING: failed to save transcript to database: {e}")
+        traceback.print_exc()
+        # Don't fail transcription if DB save fails
 
     return str(filepath)
 

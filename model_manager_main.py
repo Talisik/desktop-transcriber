@@ -139,7 +139,17 @@ def main():
             if not is_valid and warning:
                 result = {
                     "status": "validation_failed",
-                    "error": warning,
+                    "error": warnin print(f"WARNING: Alignment model for language '{language_code}' not available, using English alignment model")
+                alignment_language = "en"
+                try:
+                    self.alignment_model = whisperx.load_align_model(
+                        language_code=alignment_language, 
+                        device=device
+                    )
+                    print(f"alignment model downloaded (language: {alignment_language})")
+                except Exception as fallback_error:
+                    # If even English fails, that's a real problem
+                    raise Runtimeg,
                     "model_name": args.model
                 }
                 print(json.dumps(result, indent=2))
@@ -199,6 +209,10 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
+
+
+
+
 
 
 

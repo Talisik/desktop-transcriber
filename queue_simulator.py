@@ -345,6 +345,12 @@ def main():
         default=0.0,
         help="Delay between queuing tasks in seconds (default: 0.0)"
     )
+    parser.add_argument(
+        "--language-code",
+        type=str,
+        default=None,
+        help="Override language code (e.g., 'en', 'tl', 'cy'). If not provided, uses language from database or defaults to 'en'"
+    )
     
     args = parser.parse_args()
     
@@ -390,10 +396,11 @@ def main():
         # create test payload
         process_id = args.process_id or f"test_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         try:
+            language_code = args.language_code or "en"
             base_payload = create_test_payload(
                 process_id=process_id,
                 audio_file=args.audio_file,
-                language_code="en"
+                language_code=language_code
             )
         except FileNotFoundError as e:
             parser.error(str(e))
