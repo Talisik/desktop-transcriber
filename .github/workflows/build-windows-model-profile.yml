@@ -1,12 +1,17 @@
 name: Build Windows Model Profile
 
 # Build model_profile Windows executable
+# DISABLED - Workflow commented out to prevent it from running
+# To re-enable, uncomment the 'on:' section below
+# on:
+#   push:
+#     branches: [ main, master, face-recog/queue ]
+#   pull_request:
+#     branches: [ main, master ]
+#   workflow_dispatch:  # Allow manual trigger from GitHub Actions UI
 on:
   push:
-    branches: [ main, master, face-recog/queue ]
-  pull_request:
-    branches: [ main, master ]
-  workflow_dispatch:  # Allow manual trigger from GitHub Actions UI
+    branches: [ __disabled__never_trigger__ ]  # Non-existent branch to prevent workflow from running
 
 jobs:
   build:
