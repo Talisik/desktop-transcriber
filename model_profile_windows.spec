@@ -9,6 +9,11 @@ from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 resource_tracker_datas = collect_data_files('resource_tracker')
 resource_tracker_submodules = collect_submodules('resource_tracker')
 
+# explicitly include model_profiles.json (collect_data_files might miss JSON files)
+model_profiles_json = [
+    ('resource_tracker/model_profiles/model_profiles.json', 'resource_tracker/model_profiles')
+]
+
 # collect psutil data files (needed for system resource detection)
 psutil_datas = collect_data_files('psutil')
 
@@ -30,7 +35,7 @@ a = Analysis(
     ['model_profile_main.py'],
     pathex=[],
     binaries=[],
-    datas=resource_tracker_datas + psutil_datas,  # resource_tracker for model_profiles.json, psutil for system detection
+    datas=resource_tracker_datas + model_profiles_json + psutil_datas,  # resource_tracker for model_profiles.json, psutil for system detection
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
