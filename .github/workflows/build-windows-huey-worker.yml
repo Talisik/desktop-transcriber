@@ -26,15 +26,17 @@ jobs:
           python -m pip install --upgrade pip
           pip install build
       
-      - name: Configure git credentials for private repo
-        run: |
-          git config --global credential.helper store
-          $credential = "https://x-token-auth:${{ secrets.BITBUCKET_TOKEN }}@bitbucket.org"
-          $credential | Out-File -FilePath "$env:USERPROFILE\.git-credentials" -Encoding utf8 -NoNewline
+      # - name: Configure git credentials for private repo
+      #   run: |
+      #     git config --global credential.helper store
+      #     $credential = "https://x-token-auth:${{ secrets.BITBUCKET_TOKEN }}@bitbucket.org"
+      #     $credential | Out-File -FilePath "$env:USERPROFILE\.git-credentials" -Encoding utf8 -NoNewline
       
-      - name: Install project dependencies
+      - name: Install resource_tracker dependencies
         run: |
-          pip install -e .
+          # Only install what's needed for resource_tracker - skip full project install
+          # to avoid pulling in munchkin-chunker and other heavy dependencies
+          pip install psutil>=5.9.0
       
       # - name: Install CUDA-enabled PyTorch
       #   run: |
