@@ -1,5 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-# Windows build spec for resource_tracker
+# Cross-platform build spec for resource_tracker
 
 import sys
 import os
