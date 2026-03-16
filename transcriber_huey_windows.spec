@@ -30,6 +30,11 @@ munchkin_chunker_submodules = collect_submodules('munchkin_chunker')
 # Comprehensive transformers collection to fix torchcodec and metadata issues
 transformers_datas, transformers_binaries, transformers_hiddenimports = collect_all('transformers')
 
+# Comprehensive torchcodec collection - needed for pyannote/whisperx audio decoding in frozen apps
+# Note: torchcodec may require FFmpeg DLLs at runtime on Windows
+torchcodec_datas, torchcodec_binaries, torchcodec_hiddenimports = collect_all('torchcodec')
+torchcodec_submodules = collect_submodules('torchcodec')
+
 # hidden imports for ML libs + huey
 hiddenimports = [
     'whisperx',
@@ -89,13 +94,57 @@ hiddenimports = [
     'pydantic',
     # munchkin_chunker imports
     'munchkin_chunker',
-] + whisperx_submodules + huey_submodules + speechbrain_submodules + list(speechbrain_hiddenimports) + pyannote_submodules + list(pyannote_hiddenimports) + list(transformers_hiddenimports) + munchkin_chunker_submodules
+] + whisperx_submodules + huey_submodules + speechbrain_submodules + list(speechbrain_hiddenimports) + pyannote_submodules + list(pyannote_hiddenimports) + list(transformers_hiddenimports) + munchkin_chunker_submodules + torchcodec_submodules + list(torchcodec_hiddenimports) + [
+    # torchcodec imports
+    'torchcodec',
+    'torchcodec._core',
+    'torchcodec._core.ops',
+]
+
+all_binaries = speechbrain_binaries + pyannote_binaries + transformers_binaries + torchcodec_binaries
+
+# collect FFmpeg DLLs if available (torchcodec may need them on Windows)
+# FFmpeg DLLs should be in the same directory as ffmpeg.exe
+ffmpeg_dlls = []
+ffmpeg_exe = None
+
+# try FFMPEG_PATH first (most reliable)
+ffmpeg_path_env = os.environ.get('FFMPEG_PATH')
+if ffmpeg_path_env and os.path.exists(ffmpeg_path_env):
+    if os.path.isfile(ffmpeg_path_env):
+        ffmpeg_exe = ffmpeg_path_env
+    elif os.path.isdir(ffmpeg_path_env):
+        potential_exe = os.path.join(ffmpeg_path_env, 'ffmpeg.exe')
+        if os.path.exists(potential_exe):
+            ffmpeg_exe = potential_exe
+
+# fallback to PATH search
+if not ffmpeg_exe:
+    import shutil
+    ffmpeg_exe = shutil.which('ffmpeg.exe') or shutil.which('ffmpeg')
+
+if ffmpeg_exe:
+    ffmpeg_dir = os.path.dirname(os.path.abspath(ffmpeg_exe))
+    dll_names = ['avcodec-*.dll', 'avformat-*.dll', 'avutil-*.dll', 'swresample-*.dll', 'swscale-*.dll']
+    import glob
+    for dll_pattern in dll_names:
+        for dll_file in glob.glob(os.path.join(ffmpeg_dir, dll_pattern)):
+            ffmpeg_dlls.append((dll_file, os.path.basename(dll_file)))
+    if ffmpeg_dlls:
+        all_binaries = all_binaries + ffmpeg_dlls
+        print(f"[PyInstaller] Found {len(ffmpeg_dlls)} FFmpeg DLLs in: {ffmpeg_dir}")
+    else:
+        print(f"[PyInstaller] WARNING: FFmpeg DLLs not found in {ffmpeg_dir}. torchcodec may fail to load.")
+        print(f"[PyInstaller] Ensure FFmpeg 'full-shared' version is installed with DLLs.")
+else:
+    print(f"[PyInstaller] WARNING: ffmpeg.exe not found. torchcodec may fail to load.")
+    print(f"[PyInstaller] Set FFMPEG_PATH or ensure ffmpeg is in PATH during build.")
 
 a = Analysis(
     ['transcriber_huey.py'],
     pathex=[],
-    binaries=speechbrain_binaries + pyannote_binaries + transformers_binaries,
-    datas=whisperx_datas + faster_whisper_datas + lightning_fabric_datas + speechbrain_datas + pyannote_datas + huey_datas + transformers_datas + munchkin_chunker_datas,
+    binaries=all_binaries,
+    datas=whisperx_datas + faster_whisper_datas + lightning_fabric_datas + speechbrain_datas + pyannote_datas + huey_datas + transformers_datas + munchkin_chunker_datas + torchcodec_datas,
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},

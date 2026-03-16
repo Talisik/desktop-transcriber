@@ -58,6 +58,15 @@ resources/models/
 resources/videos/
 resources/mod els/
 
+# HuggingFace / model download locks
+models/.locks/
+
+# Model caches / blobs (do not commit)
+models/
+
+# Stray local file(s)
+=6.17.0
+
 # IDE
 .vscode/
 .idea/

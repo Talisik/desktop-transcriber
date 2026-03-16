@@ -243,3 +243,15 @@ When building and testing the Windows executable, verify:
 - [ ] Executable size is reasonable (< 4GB total in directory)
 - [ ] All dependencies are included (no missing DLL errors)
 - [ ] Worker processes tasks successfully end-to-end
+
+### 7. TorchCodec / pyannote audio decoding (Windows)
+- [ ] `dist/transcriber_huey/_internal/torchcodec/libtorchcodec_core*.dll` exists after build
+- [ ] If you bundle FFmpeg DLLs at build time, confirm these exist next to the exe (or at the bundle root):
+  - [ ] `avcodec-*.dll`
+  - [ ] `avformat-*.dll`
+  - [ ] `avutil-*.dll`
+  - [ ] `swresample-*.dll`
+  - [ ] `swscale-*.dll`
+- [ ] Run `transcriber_huey.exe` on a clean Windows machine and confirm you **don’t** see:
+  - `torchcodec is not installed correctly so built-in audio decoding will fail`
+- [ ] If it still fails on only one machine: install/repair **Microsoft Visual C++ Redistributable** (common cause of “DLL present but won’t load”).
