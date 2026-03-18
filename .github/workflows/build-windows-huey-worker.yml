@@ -30,9 +30,11 @@ jobs:
         env:
           BITBUCKET_TOKEN: ${{ secrets.BITBUCKET_TOKEN }}
         run: |
-          $credContent = "https://x-token-auth:${env:BITBUCKET_TOKEN}@bitbucket.org"
-          [System.IO.File]::WriteAllText("$env:USERPROFILE\.git-credentials", $credContent, [System.Text.Encoding]::ASCII)
-          git config --global credential.helper store
+          $token = $env:BITBUCKET_TOKEN
+          $addition = "`n[url `"https://x-token-auth:$token@bitbucket.org/`"]`n`tinsteadOf = https://bitbucket.org/`n"
+          $gitconfigPath = "$env:USERPROFILE\.gitconfig"
+          $existing = if (Test-Path $gitconfigPath) { [System.IO.File]::ReadAllText($gitconfigPath) } else { "" }
+          [System.IO.File]::WriteAllText($gitconfigPath, $existing + $addition, [System.Text.Encoding]::ASCII)
       
       - name: Install project dependencies
         run: |
