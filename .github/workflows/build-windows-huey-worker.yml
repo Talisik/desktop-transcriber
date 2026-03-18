@@ -38,10 +38,8 @@ jobs:
           BITBUCKET_TOKEN: ${{ secrets.BITBUCKET_TOKEN }}
         run: |
           $token = $env:BITBUCKET_TOKEN.Trim()
-          $addition = "`n[url `"https://x-token-auth:$token@bitbucket.org/`"]`n`tinsteadOf = https://bitbucket.org/`n"
-          $gitconfigPath = "$env:USERPROFILE\.gitconfig"
-          $existing = if (Test-Path $gitconfigPath) { [System.IO.File]::ReadAllText($gitconfigPath) } else { "" }
-          [System.IO.File]::WriteAllText($gitconfigPath, $existing + $addition, [System.Text.Encoding]::ASCII)
+          $b64 = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("x-token-auth:$token"))
+          git config --global http."https://bitbucket.org/".extraHeader "Authorization: Basic $b64"
 
       - name: Install project dependencies
         run: |
