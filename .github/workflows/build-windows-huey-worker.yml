@@ -28,9 +28,7 @@ jobs:
       
       - name: Configure git credentials for private repo
         run: |
-          git config --global credential.helper store
-          $credential = "https://x-token-auth:${{ secrets.BITBUCKET_TOKEN }}@bitbucket.org"
-          $credential | Out-File -FilePath "$env:USERPROFILE\.git-credentials" -Encoding utf8 -NoNewline
+          git config --global url."https://x-token-auth:${{ secrets.BITBUCKET_TOKEN }}@bitbucket.org/".insteadOf "https://bitbucket.org/"
       
       - name: Install project dependencies
         run: |
