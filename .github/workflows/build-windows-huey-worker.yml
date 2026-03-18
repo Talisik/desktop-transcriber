@@ -38,8 +38,9 @@ jobs:
           BITBUCKET_TOKEN: ${{ secrets.BITBUCKET_TOKEN }}
         run: |
           $token = $env:BITBUCKET_TOKEN.Trim()
-          $b64 = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("x-token-auth:$token"))
-          git config --global http."https://bitbucket.org/".extraHeader "Authorization: Basic $b64"
+          git config --global --unset-all credential.helper 2>$null
+          git config --global credential.helper store
+          Set-Content -Path "$env:USERPROFILE\.git-credentials" -Value "https://x-token-auth:$token@bitbucket.org" -Encoding ASCII -NoNewline
 
       - name: Install project dependencies
         run: |
