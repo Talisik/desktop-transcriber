@@ -34,14 +34,9 @@ jobs:
           pip install "git+https://x-token-auth:$token@bitbucket.org/metawhale/munchkin_chunker.git"
 
       - name: Install project dependencies
-        env:
-          BITBUCKET_TOKEN: ${{ secrets.BITBUCKET_TOKEN }}
         run: |
-          $token = $env:BITBUCKET_TOKEN.Trim()
-          $env:GIT_CONFIG_COUNT = "1"
-          $env:GIT_CONFIG_KEY_0 = "url.https://x-token-auth:$token@bitbucket.org/.insteadOf"
-          $env:GIT_CONFIG_VALUE_0 = "https://bitbucket.org/"
-          pip install -e .
+          pip install -e . --no-deps
+          pip install "pyinstaller>=6.17.0" "whisperx>=3.7.4" "psutil>=5.9.0" "mutagen>=1.47.0" "pydantic>=2.12.5" "huey>=2.5.0" "pytorch-lightning>=2.1.0" "torchmetrics>=1.2.0"
       
       - name: Install CUDA-enabled PyTorch
         run: |
