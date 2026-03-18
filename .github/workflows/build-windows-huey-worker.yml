@@ -30,13 +30,14 @@ jobs:
         env:
           BITBUCKET_TOKEN: ${{ secrets.BITBUCKET_TOKEN }}
         run: |
-          pip install "git+https://x-token-auth:$($env:BITBUCKET_TOKEN)@bitbucket.org/metawhale/munchkin_chunker.git"
+          $token = $env:BITBUCKET_TOKEN.Trim()
+          pip install "git+https://x-token-auth:$token@bitbucket.org/metawhale/munchkin_chunker.git"
 
       - name: Configure git credentials for private repo
         env:
           BITBUCKET_TOKEN: ${{ secrets.BITBUCKET_TOKEN }}
         run: |
-          $token = $env:BITBUCKET_TOKEN
+          $token = $env:BITBUCKET_TOKEN.Trim()
           $addition = "`n[url `"https://x-token-auth:$token@bitbucket.org/`"]`n`tinsteadOf = https://bitbucket.org/`n"
           $gitconfigPath = "$env:USERPROFILE\.gitconfig"
           $existing = if (Test-Path $gitconfigPath) { [System.IO.File]::ReadAllText($gitconfigPath) } else { "" }
