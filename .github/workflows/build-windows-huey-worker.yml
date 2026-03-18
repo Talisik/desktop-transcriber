@@ -27,8 +27,12 @@ jobs:
           pip install build
       
       - name: Configure git credentials for private repo
+        env:
+          BITBUCKET_TOKEN: ${{ secrets.BITBUCKET_TOKEN }}
         run: |
-          git config --global url."https://x-token-auth:${{ secrets.BITBUCKET_TOKEN }}@bitbucket.org/".insteadOf "https://bitbucket.org/"
+          $credContent = "https://x-token-auth:${env:BITBUCKET_TOKEN}@bitbucket.org"
+          $credContent | Out-File -FilePath "$env:USERPROFILE\.git-credentials" -Encoding utf8 -NoNewline
+          git config --global credential.helper store
       
       - name: Install project dependencies
         run: |
