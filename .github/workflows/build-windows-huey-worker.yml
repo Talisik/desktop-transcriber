@@ -33,17 +33,14 @@ jobs:
           $token = $env:BITBUCKET_TOKEN.Trim()
           pip install "git+https://x-token-auth:$token@bitbucket.org/metawhale/munchkin_chunker.git"
 
-      - name: Configure git credentials for private repo
+      - name: Install project dependencies
         env:
           BITBUCKET_TOKEN: ${{ secrets.BITBUCKET_TOKEN }}
         run: |
           $token = $env:BITBUCKET_TOKEN.Trim()
-          git config --global --unset-all credential.helper 2>$null
-          git config --global credential.helper store
-          Set-Content -Path "$env:USERPROFILE\.git-credentials" -Value "https://x-token-auth:$token@bitbucket.org" -Encoding ASCII -NoNewline
-
-      - name: Install project dependencies
-        run: |
+          $env:GIT_CONFIG_COUNT = "1"
+          $env:GIT_CONFIG_KEY_0 = "url.https://x-token-auth:$token@bitbucket.org/.insteadOf"
+          $env:GIT_CONFIG_VALUE_0 = "https://bitbucket.org/"
           pip install -e .
       
       - name: Install CUDA-enabled PyTorch
