@@ -51,42 +51,42 @@ jobs:
         run: |
           pip install pyinstaller>=6.17.0
       
-      # - name: Build huey_worker executable with PyInstaller
-      #   run: |
-      #     pyinstaller huey_worker_windows.spec --clean --noconfirm
-      
-      
+      - name: Build huey_worker executable with PyInstaller
+        run: |
+          pyinstaller huey_worker_windows.spec --clean --noconfirm
+
+
       # - name: Build transcriber_huey executable with PyInstaller
       #   run: |
       #     pyinstaller transcriber_huey_windows.spec --clean --noconfirm
-      
+
       # - name: Build queue_simulator executable with PyInstaller
       #   run: |
       #     pyinstaller queue_simulator_windows.spec --clean --noconfirm
-      
-      - name: Build resource_tracker executable with PyInstaller
-        run: |
-          pyinstaller resource_tracker_windows.spec --clean --noconfirm
-      
-      - name: Build model_profile executable with PyInstaller
-        run: |
-          pyinstaller model_profile_windows.spec --clean --noconfirm
+
+      # - name: Build resource_tracker executable with PyInstaller
+      #   run: |
+      #     pyinstaller resource_tracker_windows.spec --clean --noconfirm
+
+      # - name: Build model_profile executable with PyInstaller
+      #   run: |
+      #     pyinstaller model_profile_windows.spec --clean --noconfirm
       
       # - name: Build model_manager executable with PyInstaller
       #   run: |
       #     pyinstaller model_manager_windows.spec --clean --noconfirm
       
-      # - name: Verify huey_worker executable exists
-      #   run: |
-      #     if (Test-Path "dist\huey_worker\huey_worker.exe") {
-      #       Write-Host "huey_worker.exe built successfully"
-      #       $fileInfo = Get-Item "dist\huey_worker\huey_worker.exe"
-      #       Write-Host "   Size: $([math]::Round($fileInfo.Length / 1MB, 2)) MB"
-      #     } else {
-      #       Write-Host "huey_worker.exe not found!"
-      #       exit 1
-      #     }
-      
+      - name: Verify huey_worker executable exists
+        run: |
+          if (Test-Path "dist\huey_worker\huey_worker.exe") {
+            Write-Host "huey_worker.exe built successfully"
+            $fileInfo = Get-Item "dist\huey_worker\huey_worker.exe"
+            Write-Host "   Size: $([math]::Round($fileInfo.Length / 1MB, 2)) MB"
+          } else {
+            Write-Host "huey_worker.exe not found!"
+            exit 1
+          }
+
       # - name: Verify queue_simulator executable exists
       #   run: |
       #     if (Test-Path "dist\queue_simulator.exe") {
@@ -97,32 +97,28 @@ jobs:
       #       Write-Host "queue_simulator.exe not found!"
       #       exit 1
       #     }
-      
-      - name: Verify resource_tracker executable exists
-        run: |
-          if (Test-Path "dist\resource_tracker.exe") {
-            Write-Host "resource_tracker.exe built successfully"
-            $fileInfo = Get-Item "dist\resource_tracker.exe"
-            Write-Host "   Size: $([math]::Round($fileInfo.Length / 1MB, 2)) MB"
-          } else {
-            Write-Host "resource_tracker.exe not found!"
-            exit 1
-          }
-      
-      - name: Verify model_profile executable exists
-        run: |
-          if (Test-Path "dist\model_profile.exe") {
-            Write-Host "model_profile.exe built successfully"
-            $fileInfo = Get-Item "dist\model_profile.exe"
-            Write-Host "   Size: $([math]::Round($fileInfo.Length / 1MB, 2)) MB"
-          } elseif (Test-Path "dist\model_profile\model_profile.exe") {
-            Write-Host "model_profile.exe built successfully"
-            $fileInfo = Get-Item "dist\model_profile\model_profile.exe"
-            Write-Host "   Size: $([math]::Round($fileInfo.Length / 1MB, 2)) MB"
-          } else {
-            Write-Host "model_profile.exe not found!"
-            exit 1
-          }
+
+      # - name: Verify resource_tracker executable exists
+      #   run: |
+      #     if (Test-Path "dist\resource_tracker.exe") {
+      #       Write-Host "resource_tracker.exe built successfully"
+      #       $fileInfo = Get-Item "dist\resource_tracker.exe"
+      #       Write-Host "   Size: $([math]::Round($fileInfo.Length / 1MB, 2)) MB"
+      #     } else {
+      #       Write-Host "resource_tracker.exe not found!"
+      #       exit 1
+      #     }
+
+      # - name: Verify model_profile executable exists
+      #   run: |
+      #     if (Test-Path "dist\model_profile.exe") {
+      #       Write-Host "model_profile.exe built successfully"
+      #       $fileInfo = Get-Item "dist\model_profile.exe"
+      #       Write-Host "   Size: $([math]::Round($fileInfo.Length / 1MB, 2)) MB"
+      #     } else {
+      #       Write-Host "model_profile.exe not found!"
+      #       exit 1
+      #     }
       
       # - name: Verify model_manager executable exists
       #   run: |
@@ -135,14 +131,14 @@ jobs:
       #       exit 1
       #     }
       
-      # - name: Upload huey_worker artifact
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: windows-huey-worker
-      #     path: dist/huey_worker
-      #     retention-days: 1
-      #     if-no-files-found: error
-      
+      - name: Upload huey_worker artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-huey-worker
+          path: dist/huey_worker
+          retention-days: 1
+          if-no-files-found: error
+
       # - name: Upload queue_simulator artifact
       #   uses: actions/upload-artifact@v4
       #   with:
@@ -150,24 +146,22 @@ jobs:
       #     path: dist/queue_simulator.exe
       #     retention-days: 1
       #     if-no-files-found: error
-      
-      - name: Upload resource_tracker artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-resource-tracker
-          path: dist/resource_tracker.exe
-          retention-days: 1
-          if-no-files-found: error
-      
-      - name: Upload model_profile artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-model-profile
-          path: |
-            dist/model_profile.exe
-            dist/model_profile/model_profile.exe
-          retention-days: 1
-          if-no-files-found: error
+
+      # - name: Upload resource_tracker artifact
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: windows-resource-tracker
+      #     path: dist/resource_tracker.exe
+      #     retention-days: 1
+      #     if-no-files-found: error
+
+      # - name: Upload model_profile artifact
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: windows-model-profile
+      #     path: dist/model_profile/model_profile.exe
+      #     retention-days: 1
+      #     if-no-files-found: error
       
       # - name: Upload model_manager artifact
       #   uses: actions/upload-artifact@v4

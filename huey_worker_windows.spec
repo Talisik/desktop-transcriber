@@ -188,6 +188,24 @@ filtered_datas = all_datas
 
 all_binaries = speechbrain_binaries + pyannote_binaries + transformers_binaries + munchkin_chunker_binaries + torchcodec_binaries
 
+# Explicitly collect libtorchcodec_core*.dll files - collect_all misses these
+# They must be placed in the 'torchcodec' subdirectory so torchcodec can find them
+torchcodec_core_dlls = []
+try:
+    import torchcodec
+    tc_dir = os.path.dirname(torchcodec.__file__)
+    import glob
+    core_dlls = glob.glob(os.path.join(tc_dir, 'libtorchcodec_core*.dll'))
+    for dll in core_dlls:
+        torchcodec_core_dlls.append((dll, 'torchcodec'))
+    if torchcodec_core_dlls:
+        print(f"[PyInstaller] Found {len(torchcodec_core_dlls)} libtorchcodec_core DLLs in: {tc_dir}")
+        all_binaries = all_binaries + torchcodec_core_dlls
+    else:
+        print(f"[PyInstaller] WARNING: No libtorchcodec_core*.dll found in {tc_dir}")
+except Exception as e:
+    print(f"[PyInstaller] WARNING: Could not collect torchcodec core DLLs: {e}")
+
 # collect FFmpeg DLLs if available (torchcodec needs them on Windows)
 # FFmpeg DLLs should be in the same directory as ffmpeg.exe
 # we'll try to find them from common locations or environment
