@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[oc]
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Benchmark results (will be mounted as volume)
+benchmark_results/
+
+# Resources (will be mounted as volume)
+resources/
+
+# Documentation
+*.md
+README.md
+
+# Other
+.env
+.env.local

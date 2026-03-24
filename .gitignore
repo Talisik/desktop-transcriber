@@ -1,8 +1,6 @@
 # Python-generated files
 __pycache__/
 *.py[oc]
-*.pyc
-*.pyo
 *.pyd
 .Python
 build/
@@ -25,9 +23,6 @@ env/
 *.spec.bak
 *.manifest
 *.spec~
-# Keep .spec files but ignore build artifacts
-build/
-dist/
 *.exe
 
 # Application outputs
@@ -38,25 +33,20 @@ output/
 *.sqlite
 *.sqlite3
 
-# Test data files
+# Media / test data files
 *.mp3
 *.mp4
 *.wav
 *.flac
 *.m4a
 *.ogg
-salina_vad.db
-
-*.json
 
 # Benchmark results
 benchmark_results/
 
-# Resources (models, videos, etc.)
+# Resources and models (large binary caches)
 resources/
-resources/models/
-resources/videos/
-resources/mod els/
+models/
 
 # IDE
 .vscode/
@@ -75,9 +65,6 @@ resources/mod els/
 ehthumbs.db
 Thumbs.db
 Desktop.ini
-
-# Docker
-.dockerignore
 
 # Logs
 *.log
