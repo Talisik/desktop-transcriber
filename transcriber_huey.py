@@ -1207,9 +1207,9 @@ def _transcribe_payload_task_impl(
                 chunked_transcript_data=chunked_transcript_data,
                 transcription_metadata=transcription_metadata
             )
-            print(f"   ✓ transcript data saved to database: {db_path}")
+            print(f"   transcript data saved to database: {db_path}")
         else:
-            print(f"   ⚠ skipping database save (chunking failed)")
+            print(f"   skipping database save (chunking failed)")
             
     except Exception as e:
         print(f"   WARNING: failed to save transcript to database: {e}")
