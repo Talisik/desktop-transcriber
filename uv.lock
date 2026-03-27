@@ -1384,7 +1384,7 @@ wheels = [
 [[package]]
 name = "munchkin-chunker"
 version = "0.1.0"
-source = { git = "https://bitbucket.org/metawhale/munchkin_chunker.git#1ac7248b6c8c87c56263178cd51de95ba8e43409" }
+source = { git = "https://bitbucket.org/metawhale/munchkin_chunker.git#68ebbf5959ad21dc96f234dac863385760b1d977" }
 dependencies = [
     { name = "numpy", version = "2.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.13'" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13'" },
